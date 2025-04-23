@@ -1,0 +1,48 @@
+{
+  "version": "7",
+  "dialect": "postgresql",
+  "entries": [
+    {
+      "idx": 0,
+      "version": "7",
+      "when": 1744462372934,
+      "tag": "0000_light_wild_child",
+      "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "7",
+      "when": 1745226339326,
+      "tag": "0001_windy_nemesis",
+      "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1745245407618,
+      "tag": "0002_keen_dark_phoenix",
+      "breakpoints": true
+    },
+    {
+      "idx": 3,
+      "version": "7",
+      "when": 1745391882602,
+      "tag": "0003_skinny_captain_america",
+      "breakpoints": true
+    },
+    {
+      "idx": 4,
+      "version": "7",
+      "when": 1745393560246,
+      "tag": "0004_stale_darkstar",
+      "breakpoints": true
+    },
+    {
+      "idx": 5,
+      "version": "7",
+      "when": 1745397771980,
+      "tag": "0005_deep_solo",
+      "breakpoints": true
+    }
+  ]
+}

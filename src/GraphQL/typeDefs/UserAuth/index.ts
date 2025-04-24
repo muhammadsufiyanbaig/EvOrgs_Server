@@ -1,6 +1,6 @@
 import { gql } from "graphql-tag";
 
-export const typeDefs = gql`
+export const UsertypeDefs = gql`
   scalar Date
 
   enum Gender {
@@ -57,7 +57,6 @@ export const typeDefs = gql`
     password: String!
   }
 
-  # Add the missing input types
   input UpdateProfileInput {
     firstName: String
     lastName: String

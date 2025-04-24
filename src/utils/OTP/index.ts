@@ -7,7 +7,6 @@ import { otps } from '../../Schema';
 import { v4 as uuidv4 } from 'uuid';
 import { eq, and, lt, gt } from 'drizzle-orm';
 import dotenv from 'dotenv';
-import path from 'path';
 
 dotenv.config();
 
@@ -138,7 +137,7 @@ public static async sendOtpEmail(
     
     // Prepare email options without logo
     const mailOptions: any = {
-      from: process.env.EMAIL_FROM || '"EvOrgs" <auth@example.com>',
+      from: process.env.EMAIL_FROM || '"EvOrgs" <send.sufiyan@gmail.com>',
       to: email,
       subject,
       text,

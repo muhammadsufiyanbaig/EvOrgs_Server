@@ -4,11 +4,11 @@ import bodyParser from "body-parser";
 import { ApolloServer } from "@apollo/server";
 import { expressMiddleware } from "@apollo/server/express4";
 import dotenv from "dotenv";
-import { typeDefs } from "./GraphQL/types"; // Adjust the path as needed
+import { typeDefs } from "./GraphQL/typeDefs"; // Adjust the path as needed
 import { resolvers } from "./GraphQL/Resolvers"; // Adjust the path as needed
 import { authMiddleware } from "./middleware/auth"; // Import your auth middleware
-import { db } from "./Config/db"; // Import your database connection
 import { Context } from "./utils/types";
+import { createContext } from "./GraphQL/Context";
 
 
 dotenv.config();
@@ -29,18 +29,9 @@ async function startServer() {
 
   await server.start();
   // GraphQL Endpoint with proper context
-  app.use(
-    "/graphql",
-    expressMiddleware(server, {
-      context: async ({ req }) => {
-        // Return a context object with the db and user
-        return {
-          db, // Your database connection
-          user: req.user, // User from auth middleware if available
-        };
-      },
-    })
-  );
+  app.use('/graphql', expressMiddleware(server, {
+    context: createContext,
+  }));
 
   // Start Express Server
   const PORT = process.env.PORT || 4000;

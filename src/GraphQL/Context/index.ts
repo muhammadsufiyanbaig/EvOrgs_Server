@@ -1,9 +1,10 @@
 import { Request } from 'express';
-import { Context, User, Vendor } from '../../utils/types';
+import { Context, User, Vendor, Admin } from '../../utils/types'; // Import Admin type
 import { db } from '../../Config/db';
 import { verifyToken } from '../../Config/auth/JWT';
 import { users } from '../../Schema';
 import { vendors } from '../../Schema';
+import { admin } from '../../Schema'; // Import admins schema
 import { eq } from 'drizzle-orm';
 
 export async function createContext({ req }: { req: Request }): Promise<Context> {
@@ -12,6 +13,7 @@ export async function createContext({ req }: { req: Request }): Promise<Context>
   
   let user: User | undefined;
   let vendor: Vendor | undefined;
+  let admin: Admin | undefined; // Add admin to the context
   
   if (token) {
     try {
@@ -41,6 +43,17 @@ export async function createContext({ req }: { req: Request }): Promise<Context>
             vendor = vendorRecord[0] as unknown as Vendor;
           }
         }
+        // Check if this is an admin token
+        else if (decoded.type === 'admin') {
+          const adminRecord = await db.select()
+            .from(admins)
+            .where(eq(admins.id, decoded.userId))
+            .limit(1);
+            
+          if (adminRecord.length > 0) {
+            admin = adminRecord[0] as unknown as Admin;
+          }
+        }
       }
     } catch (error) {
       // Token invalid or expired
@@ -48,5 +61,5 @@ export async function createContext({ req }: { req: Request }): Promise<Context>
     }
   }
   
-  return { user, vendor, db };
+  return { user, vendor, admin, db }; // Include admin in the returned context
 }

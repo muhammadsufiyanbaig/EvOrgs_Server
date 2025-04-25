@@ -123,6 +123,7 @@ export interface Context {
   db: DrizzleDB;
   user?: User;
   vendor?: Vendor;
+  Admin?: User;
 }
 
 

@@ -1,5 +1,7 @@
-import { UsertypeDefs } from "./UserAuth";
+import { UserTypeDefs } from "./UserAuth";
+import { VendorTypeDefs } from "./VendorAuth";
 
 export const typeDefs = [
-  UsertypeDefs,
+  UserTypeDefs,
+  VendorTypeDefs,
   ];

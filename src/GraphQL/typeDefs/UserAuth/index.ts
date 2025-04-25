@@ -1,6 +1,6 @@
 import { gql } from "graphql-tag";
 
-export const UsertypeDefs = gql`
+export const UserTypeDefs = gql`
   scalar Date
 
   enum Gender {

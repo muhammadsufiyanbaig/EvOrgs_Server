@@ -14,9 +14,12 @@ export function generateToken(user: User): string {
   return jwt.sign(payload, JWT_SECRET, { expiresIn: JWT_EXPIRES_IN });
 }
 
-export function verifyToken(token: string): { userId: string; email: string } | null {
+export function verifyToken(token: string): {
+    type: string; userId: string; email: string 
+} | null {
   try {
-    return jwt.verify(token, JWT_SECRET) as { userId: string; email: string };
+    const decoded = jwt.verify(token, JWT_SECRET) as { userId: string; email: string };
+    return { type: 'user', ...decoded };
   } catch (error) {
     return null;
   }

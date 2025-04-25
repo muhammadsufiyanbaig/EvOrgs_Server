@@ -16,7 +16,7 @@ export class UserModel {
       .where(eq(users.email, email))
       .limit(1);
     
-    return result.length > 0 ? result[0] as User : null;
+    return result.length > 0 ? result[0] as unknown as User : null;
   }
 
   async findById(id: string): Promise<User | null> {
@@ -25,7 +25,7 @@ export class UserModel {
       .where(eq(users.id, id))
       .limit(1);
     
-    return result.length > 0 ? result[0] as User : null;
+    return result.length > 0 ? result[0] as unknown as User : null;
   }
 
   async emailExists(email: string): Promise<boolean> {

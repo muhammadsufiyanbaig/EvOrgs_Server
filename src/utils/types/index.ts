@@ -3,7 +3,6 @@ import { DrizzleDB } from '../../Config/db';
 
 export interface User {
   role: string;
-  // role: string;
   id: string;
   firstName: string;
   lastName: string;
@@ -56,7 +55,7 @@ export interface RegisterInput {
 export interface VerifyOtpInput {
   email: string;
   otp: string;
-  purpose: 'registration' | 'password-reset';
+  purpose: 'registration' | 'password-reset' | 'login';
   userType: string;
 }
 
@@ -75,13 +74,13 @@ export interface UpdateProfileInput {
 export interface ChangePasswordInput {
   currentPassword: string;
   newPassword: string;
-  purpose: 'registration' | 'password-reset';
+  purpose: 'registration' | 'password-reset' | 'login';
 }
 
 export interface ResetPasswordInput {
   email: string;
   userType: string;
-  purpose: 'registration' | 'password-reset';
+  purpose: 'registration' | 'password-reset' | 'login';
 }
 
 export interface SetNewPasswordInput {
@@ -89,12 +88,12 @@ export interface SetNewPasswordInput {
   otp: string;
   newPassword: string;
   userType: string;  
-  purpose: 'registration' | 'password-reset';
+  purpose: 'registration' | 'password-reset' | 'login';
 }
 
 export interface ResendOtpInput {
   email: string;
-  purpose: 'registration' | 'password-reset';
+  purpose: 'registration' | 'password-reset' | 'login';
   userType: string;
 }
 
@@ -123,7 +122,7 @@ export interface Context {
   db: DrizzleDB;
   user?: User;
   vendor?: Vendor;
-  Admin?: User;
+  Admin?: Admin;
 }
 
 
@@ -151,7 +150,7 @@ export interface VendorLoginInput {
 export interface VendorVerifyOtpInput {
   vendorEmail: string;
   otp: string;
-  purpose: 'registration' | 'password-reset';
+  purpose: 'registration' | 'password-reset' | 'login';
   userType: string;
 }
 
@@ -188,7 +187,7 @@ export interface VendorSetNewPasswordInput {
 
 export interface VendorResendOtpInput {
   vendorEmail: string;
-  purpose: 'registration' | 'password-reset';
+  purpose: 'registration' | 'password-reset' | 'login';
   userType: string;
 }
 
@@ -197,3 +196,78 @@ export interface VendorApprovalInput {
   status: "Pending" | "Approved" | "Rejected";
   message?: string;
 } 
+
+export interface Admin {
+  id: string;
+  firstName: string;
+  lastName: string;
+  email: string;
+  phone: string | null;
+  passwordHash: string;
+  profileImage: string | null;
+  createdAt: Date;
+  updatedAt: Date;
+}
+
+export interface AdminInput {
+  firstName: string;
+  lastName: string;
+  email: string;
+  password: string;
+  phone?: string;
+  profileImage?: string;
+}
+
+export interface AdminLoginInput {
+  email: string;
+  password: string;
+}
+
+export interface AdminRegisterInput {
+  firstName: string;
+  lastName: string;
+  email: string;
+  password: string;
+  phone?: string;
+  profileImage?: string;
+}
+
+export interface AdminVerifyOtpInput {
+  email: string;
+  otp: string;
+  purpose: 'registration' | 'password-reset' | 'login';
+  userType: string;
+}
+
+export interface AdminUpdateProfileInput {
+  firstName?: string;
+  lastName?: string;
+  phone?: string;
+  profileImage?: string;
+  fcmToken?: string;
+}
+
+export interface AdminChangePasswordInput {
+  currentPassword: string;
+  newPassword: string;
+}
+
+export interface AdminResetPasswordInput {
+  email: string;
+  userType: string;
+  purpose: 'registration' | 'password-reset' | 'login';
+}
+
+export interface AdminSetNewPasswordInput {
+  email: string;
+  otp: string;
+  newPassword: string;
+  userType: string;
+  purpose: 'registration' | 'password-reset' | 'login';
+}
+
+export interface AdminResendOtpInput {
+  email: string;
+  purpose: 'registration' | 'password-reset' | 'login';
+  userType: string;
+}

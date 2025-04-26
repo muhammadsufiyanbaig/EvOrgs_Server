@@ -13,7 +13,7 @@ export async function createContext({ req }: { req: Request }): Promise<Context>
   
   let user: User | undefined;
   let vendor: Vendor | undefined;
-  let admin: Admin | undefined; // Add admin to the context
+  let Admin: Admin | undefined;// Add admin to the context
   
   if (token) {
     try {
@@ -46,12 +46,12 @@ export async function createContext({ req }: { req: Request }): Promise<Context>
         // Check if this is an admin token
         else if (decoded.type === 'admin') {
           const adminRecord = await db.select()
-            .from(admins)
-            .where(eq(admins.id, decoded.userId))
+            .from(admin)
+            .where(eq(admin.id, decoded.userId))
             .limit(1);
             
           if (adminRecord.length > 0) {
-            admin = adminRecord[0] as unknown as Admin;
+            Admin = adminRecord[0] as unknown as Admin;
           }
         }
       }
@@ -61,5 +61,5 @@ export async function createContext({ req }: { req: Request }): Promise<Context>
     }
   }
   
-  return { user, vendor, admin, db }; // Include admin in the returned context
+  return { user, vendor, Admin, db }; // Include admin in the returned context
 }

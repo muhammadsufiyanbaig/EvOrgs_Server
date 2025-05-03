@@ -196,7 +196,6 @@ export interface VendorApprovalInput {
   status: "Pending" | "Approved" | "Rejected";
   message?: string;
 } 
-
 export interface Admin {
   id: string;
   firstName: string;
@@ -207,67 +206,4 @@ export interface Admin {
   profileImage: string | null;
   createdAt: Date;
   updatedAt: Date;
-}
-
-export interface AdminInput {
-  firstName: string;
-  lastName: string;
-  email: string;
-  password: string;
-  phone?: string;
-  profileImage?: string;
-}
-
-export interface AdminLoginInput {
-  email: string;
-  password: string;
-}
-
-export interface AdminRegisterInput {
-  firstName: string;
-  lastName: string;
-  email: string;
-  password: string;
-  phone?: string;
-  profileImage?: string;
-}
-
-export interface AdminVerifyOtpInput {
-  email: string;
-  otp: string;
-  purpose: 'registration' | 'password-reset' | 'login';
-  userType: string;
-}
-
-export interface AdminUpdateProfileInput {
-  firstName?: string;
-  lastName?: string;
-  phone?: string;
-  profileImage?: string;
-  fcmToken?: string;
-}
-
-export interface AdminChangePasswordInput {
-  currentPassword: string;
-  newPassword: string;
-}
-
-export interface AdminResetPasswordInput {
-  email: string;
-  userType: string;
-  purpose: 'registration' | 'password-reset' | 'login';
-}
-
-export interface AdminSetNewPasswordInput {
-  email: string;
-  otp: string;
-  newPassword: string;
-  userType: string;
-  purpose: 'registration' | 'password-reset' | 'login';
-}
-
-export interface AdminResendOtpInput {
-  email: string;
-  purpose: 'registration' | 'password-reset' | 'login';
-  userType: string;
 }

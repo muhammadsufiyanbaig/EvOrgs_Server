@@ -1,4 +1,4 @@
-import { VendorService } from '../../../Services/VendorAuth';
+import { VendorService } from '../../Service';
 
 const vendorService = new VendorService();
 

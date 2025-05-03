@@ -11,11 +11,11 @@ import {
   VendorSetNewPasswordInput,
   VendorUpdateProfileInput,
   VendorVerifyOtpInput,
-} from '../../utils/types';
-import { hashPassword, verifyPassword } from '../../utils/PasswordHashing';
-import { generateToken } from '../../Config/auth/JWT';
-import { VendorModel } from '../../model/Vendor';
-import { OtpService } from '../../utils/OTP';
+} from '../../../../utils/types';
+import { hashPassword, verifyPassword } from '../../../../utils/PasswordHashing';
+import { generateToken } from '../../../../Config/auth/JWT';
+import { VendorModel } from '../model';
+import { OtpService } from '../../../../utils/OTP';
 
 export class VendorService {
   async vendor(_: any, { id }: { id: string }, { db, user }: Context) {

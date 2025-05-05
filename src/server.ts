@@ -7,8 +7,7 @@ import dotenv from "dotenv";
 import { typeDefs } from "./GraphQL/typeDefs"; // Adjust the path as needed
 import { resolvers } from "./GraphQL/Resolvers"; // Adjust the path as needed
 import { authMiddleware } from "./middleware/auth"; // Import your auth middleware
-import { Context } from "./utils/types";
-import { createContext } from "./GraphQL/Context";
+import { Context, createContext } from "./GraphQL/Context";
 
 
 dotenv.config();

@@ -28,7 +28,7 @@ export class OtpService {
   }
 
   // Create and save OTP
-  public static async createOtp(email: string, userId: string | null, userType: "Vendor" | "User" | "Admin" ,purpose: 'registration' | 'login' | 'password-reset'): Promise<string> {
+  public static async createOtp(email: string, userId: string | null, userType: "Vendor" | "User" | "Admin", purpose: 'registration' | 'login' | 'password-reset'): Promise<string> {
     // Generate OTP
     const otp = this.generateOtp();
     
@@ -41,9 +41,8 @@ export class OtpService {
       await db.delete(otps)
         .where(
           and(
-            eq(otps.userId, userId),
-            eq(otps.userType, userType), // Adding the required userType field
             eq(otps.email, email),
+            eq(otps.userType, userType),
             eq(otps.purpose, purpose)
           )
         );
@@ -57,18 +56,29 @@ export class OtpService {
         );
     }
     
-    // Create new OTP record
-    await db.insert(otps).values({
+    // Create values object
+    const values: any = {
       id: uuidv4(),
-      userId: userId,
-      userType: "User", // Adding the required userType field
+      userType,
       email,
       otp,
       purpose,
       expiresAt,
       isVerified: false,
       createdAt: new Date()
-    });
+    };
+    
+    // Set ID based on user type
+    if (userType === "User") {
+      values.userId = userId;
+    } else if (userType === "Vendor") {
+      values.VendorId = userId;
+    } else if (userType === "Admin") {
+      values.adminId = userId;
+    }
+    
+    // Create new OTP record
+    await db.insert(otps).values(values);
     
     return otp;
   }
@@ -160,7 +170,8 @@ public static async sendOtpEmail(
       `
     };
 
-    await transporter.sendMail(mailOptions);
+    const send =  await transporter.sendMail(mailOptions);
+    console.log('send', send);
     
     return true;
   } catch (error) {

@@ -1,9 +1,9 @@
 // utils/models/UserModel.ts
 import { eq } from 'drizzle-orm';
 import { v4 as uuidv4 } from 'uuid';
-import { users } from '../../Schema';
-import { User, RegisterInput, UpdateProfileInput } from '../../utils/types';
-import {DrizzleDB} from '../../Config/db'
+import { users } from '../../../../Schema';
+import {DrizzleDB} from '../../../../Config/db'
+import { RegisterInput, UpdateProfileInput, User } from '../Types';
 
 // UserModel class to handle user-related database operations
 export class UserModel {
@@ -16,7 +16,7 @@ export class UserModel {
       .where(eq(users.email, email))
       .limit(1);
     
-    return result.length > 0 ? result[0] as User : null;
+    return result.length > 0 ? result[0] as unknown as User : null;
   }
 
   async findById(id: string): Promise<User | null> {
@@ -25,7 +25,7 @@ export class UserModel {
       .where(eq(users.id, id))
       .limit(1);
     
-    return result.length > 0 ? result[0] as User : null;
+    return result.length > 0 ? result[0] as unknown as User : null;
   }
 
   async emailExists(email: string): Promise<boolean> {

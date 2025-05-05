@@ -1,4 +1,4 @@
-import { UserAuthService } from '../../../Services/UserAuth';
+import { UserAuthService } from '../../Service';
 // Instantiate the UserAuthService
 
 

@@ -1,4 +1,3 @@
-import { GraphQLError } from 'graphql';
 import { GraphQLScalarType, Kind } from 'graphql';
 // Fixed Date scalar for GraphQL with proper type annotations
 export const dateScalar = new GraphQLScalarType({

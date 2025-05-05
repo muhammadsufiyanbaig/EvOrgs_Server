@@ -1,21 +1,11 @@
 import { GraphQLError } from 'graphql';
-import {
-  Context,
-  User,
-  VendorApprovalInput,
-  VendorChangePasswordInput,
-  VendorLoginInput,
-  VendorRegisterInput,
-  VendorResendOtpInput,
-  VendorResetPasswordInput,
-  VendorSetNewPasswordInput,
-  VendorUpdateProfileInput,
-  VendorVerifyOtpInput,
-} from '../../utils/types';
-import { hashPassword, verifyPassword } from '../../utils/PasswordHashing';
-import { generateToken } from '../../Config/auth/JWT';
-import { VendorModel } from '../../model/Vendor';
-import { OtpService } from '../../utils/OTP';
+
+import { hashPassword, verifyPassword } from '../../../../utils/PasswordHashing';
+import { generateToken } from '../../../../Config/auth/JWT';
+import { VendorModel } from '../model';
+import { OtpService } from '../../../../utils/OTP';
+import { VendorApprovalInput, VendorChangePasswordInput, VendorLoginInput, VendorRegisterInput, VendorResendOtpInput, VendorResetPasswordInput, VendorSetNewPasswordInput, VendorUpdateProfileInput, VendorVerifyOtpInput } from '../Types';
+import { Context } from '../../../../GraphQL/Context';
 
 export class VendorService {
   async vendor(_: any, { id }: { id: string }, { db, user }: Context) {
@@ -116,8 +106,7 @@ export class VendorService {
 
     await vendorModel.updateVendorEmail(vendor.id);
 
-    const token = generateToken({ id: vendor.id, email: vendor.vendorEmail } as User);
-
+    const token = generateToken({ id: vendor.id, email: vendor.vendorEmail } as any);
     return {
       token,
       vendor,
@@ -151,7 +140,7 @@ export class VendorService {
       );
     }
 
-    const token = generateToken({ id: vendor.id, email: vendor.vendorEmail } as User);
+    const token = generateToken({ id: vendor.id, email: vendor.vendorEmail } as any);
 
     return {
       token,
@@ -208,7 +197,7 @@ export class VendorService {
       );
     }
 
-    const token = generateToken({ id: vendor.id, email: vendor.vendorEmail } as User);
+    const token = generateToken({ id: vendor.id, email: vendor.vendorEmail } as any);
 
     return {
       token,

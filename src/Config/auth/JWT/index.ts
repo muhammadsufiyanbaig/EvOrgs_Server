@@ -1,14 +1,16 @@
 // src/auth/jwt.ts
 import jwt from 'jsonwebtoken';
-import { User } from '../../../utils/types';
+import { Admin } from '../../../Features/Auth/Admin/Types';
+import { User } from '../../../Features/Auth/User/Types';
+import { Vendor } from '../../../Features/Auth/Vendor/Types';
 
-const JWT_SECRET = process.env.JWT_SECRET || 'your-secret-key';
+const JWT_SECRET = process.env.JWT_SECRET || '$Uf!y@n3';
 const JWT_EXPIRES_IN = '7d';
 
-export function generateToken(user: User): string {
+export function generateToken(user: User | Admin | Vendor): string {
   const payload = {
     userId: user.id,
-    email: user.email,
+    email: 'vendorEmail' in user ? (user as Vendor).vendorEmail : user.email,
   };
   
   return jwt.sign(payload, JWT_SECRET, { expiresIn: JWT_EXPIRES_IN });

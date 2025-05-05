@@ -1,10 +1,10 @@
 import { GraphQLError } from 'graphql';
-import { Context } from '../../utils/types';
-import { generateToken } from '../../Config/auth/JWT';
-import { OtpService } from '../../utils/OTP';
-import { UserModel } from '../../model/User';
-import { User, RegisterInput, VerifyOtpInput, LoginInput, UpdateProfileInput, ChangePasswordInput, ResetPasswordInput, SetNewPasswordInput, ResendOtpInput } from '../../utils/types';
-import { hashPassword, verifyPassword } from '../../utils/PasswordHashing';
+import { generateToken } from '../../../../Config/auth/JWT';
+import { OtpService } from '../../../../utils/OTP';
+import { UserModel } from '../model';
+import { hashPassword, verifyPassword } from '../../../../utils/PasswordHashing';
+import { ChangePasswordInput, LoginInput, RegisterInput, ResendOtpInput, ResetPasswordInput, SetNewPasswordInput, UpdateProfileInput, User, VerifyOtpInput } from '../Types';
+import { Context } from '../../../../GraphQL/Context';
 
 export class UserAuthService {
     async me(_: any, __: any, context: Context): Promise<any> {

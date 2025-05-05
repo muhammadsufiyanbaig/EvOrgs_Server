@@ -1,4 +1,5 @@
-import { Context } from '../../../../utils/types';
+
+import { Context } from '../../../../GraphQL/Context';
 import { AdminModel } from '../model';
 import { Admin, AdminLoginInput, AdminResponse, AdminSignupInput, AuthResponse, ChangePasswordInput, OtpRequestInput, OtpResponse, OtpVerifyInput, PasswordResetResponse, ResendOtpInput, ResetPasswordInput, UpdateProfileInput } from '../Types';
 

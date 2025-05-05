@@ -1,12 +1,22 @@
 import { Request } from 'express';
-import { Context, User, Vendor, Admin } from '../../utils/types'; // Import Admin type
 import { db } from '../../Config/db';
 import { verifyToken } from '../../Config/auth/JWT';
 import { users } from '../../Schema';
 import { vendors } from '../../Schema';
 import { admin } from '../../Schema'; // Import admins schema
 import { eq } from 'drizzle-orm';
+// src/utils/types.ts
+import { DrizzleDB } from '../../Config/db';
+import { User } from '../../Features/Auth/User/Types';
+import { Vendor } from '../../Features/Auth/Vendor/Types';
+import { Admin } from '../../Features/Auth/Admin/Types';
 
+export interface Context {
+  db: DrizzleDB;
+  user?: User;
+  vendor?: Vendor;
+  Admin?: Admin;
+}
 export async function createContext({ req }: { req: Request }): Promise<Context> {
   // Get token from Authorization header
   const token = req.headers.authorization?.split(' ')[1] || '';

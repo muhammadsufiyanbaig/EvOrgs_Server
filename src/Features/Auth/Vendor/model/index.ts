@@ -2,8 +2,8 @@
 import { eq } from 'drizzle-orm';
 import { vendors } from '../../../../Schema';
 import { v4 as uuidv4 } from 'uuid';
-import { VendorApprovalInput, VendorRegisterInput, VendorUpdateProfileInput } from '../../../../utils/types';
 import { DrizzleDB } from '../../../../Config/db';
+import { VendorApprovalInput, VendorRegisterInput, VendorUpdateProfileInput } from '../Types';
 
 export class VendorModel {
 

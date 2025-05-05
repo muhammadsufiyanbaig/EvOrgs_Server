@@ -1,6 +1,6 @@
 import { db } from "../../../../../Config/db";
+import { Context } from "../../../../../GraphQL/Context";
 import { AdminService } from "../../Service";
-import { Context } from "../../../../../utils/types";
 
 const adminService = new AdminService(db);
 

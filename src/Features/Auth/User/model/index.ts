@@ -2,8 +2,8 @@
 import { eq } from 'drizzle-orm';
 import { v4 as uuidv4 } from 'uuid';
 import { users } from '../../../../Schema';
-import { User, RegisterInput, UpdateProfileInput } from '../../../../utils/types';
 import {DrizzleDB} from '../../../../Config/db'
+import { RegisterInput, UpdateProfileInput, User } from '../Types';
 
 // UserModel class to handle user-related database operations
 export class UserModel {

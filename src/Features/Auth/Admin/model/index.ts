@@ -1,6 +1,5 @@
 import { eq } from "drizzle-orm";
 import { admin } from "../../../../Schema";
-import { User } from "../../../../utils/types";
 import { hashPassword, verifyPassword } from "../../../../utils/PasswordHashing";
 import { v4 as uuidv4 } from 'uuid';
 import { generateToken } from "../../../../Config/auth/JWT";
@@ -91,7 +90,7 @@ export class AdminModel {
     }
 
     // Generate a token
-    const token = generateToken({ id: adminData.id, email: adminData.email, role: "Admin" } as User);
+    const token = generateToken({ id: adminData.id, email: adminData.email, role: "Admin" } as any);
 
     return {
       success: true,

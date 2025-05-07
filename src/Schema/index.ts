@@ -191,7 +191,6 @@ export const farmhouses = pgTable("farmhouses", {
     createdAt: timestamp("created_at").defaultNow(),
     updatedAt: timestamp("updated_at").defaultNow(),
 });
-
 // FARMHOUSE AVAILABILITY TABLE
 export const farmhouseAvailability = pgTable("farmhouse_availability", {
     id: uuid("id").primaryKey(),

@@ -19,6 +19,19 @@ export const venueResolver = {
       const venueService = new VenueService(context.db);
       return await venueService.getVenuesByVendorId(context.vendor.id);
     },
+
+    // Search venues with filters
+    searchVenues: async (_: any, filters: {
+      tags?: string[];
+      minPrice?: string;
+      maxPrice?: string;
+      minCapacity?: number;
+      maxCapacity?: number;
+      location?: string;
+    }, context: Context) => {
+      const venueService = new VenueService(context.db);
+      return await venueService.searchVenues(filters);
+    },
   },
 
   Mutation: {
@@ -34,13 +47,11 @@ export const venueResolver = {
 
     // Update an existing venue
     updateVenue: async (_: any, { input }: { input: VenueUpdateInput }, context: Context) => {
-      // Check if it's a vendor
       if (context.vendor) {
         const venueService = new VenueService(context.db);
         return await venueService.updateVenue(context.vendor.id, input);
       }
 
-      // Check if it's an admin (admins can update any venue)
       if (context.Admin) {
         const venueService = new VenueService(context.db);
         return await venueService.adminUpdateVenue(input);
@@ -51,19 +62,27 @@ export const venueResolver = {
 
     // Delete a venue
     deleteVenue: async (_: any, { id }: { id: string }, context: Context) => {
-      // Check if it's a vendor
       if (context.vendor) {
         const venueService = new VenueService(context.db);
         return await venueService.deleteVenue(context.vendor.id, id);
       }
 
-      // Check if it's an admin (admins can delete any venue)
       if (context.Admin) {
         const venueService = new VenueService(context.db);
         return await venueService.adminDeleteVenue(id);
       }
 
       throw new Error('Vendor or admin authentication required');
+    },
+
+    // Toggle venue availability
+    toggleVenueAvailability: async (_: any, { id, isAvailable }: { id: string; isAvailable: boolean }, context: Context) => {
+      if (!context.vendor) {
+        throw new Error('Vendor authentication required');
+      }
+
+      const venueService = new VenueService(context.db);
+      return await venueService.toggleVenueAvailability(context.vendor.id, id, isAvailable);
     },
   },
 };

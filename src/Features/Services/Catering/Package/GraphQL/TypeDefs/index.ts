@@ -21,6 +21,14 @@ export const CateringPackageTypeDefs = gql`
     updatedAt: String!
   }
 
+  type SearchResult {
+    packages: [CateringPackage!]!
+    totalCount: Int!
+    page: Int!
+    limit: Int!
+    totalPages: Int!
+  }
+
   input CateringPackageInput {
     packageName: String!
     serviceArea: [String!]!
@@ -57,7 +65,11 @@ export const CateringPackageTypeDefs = gql`
   type Query {
     cateringPackage(id: ID!): CateringPackage
     vendorCateringPackages: [CateringPackage!]!
-    searchCateringPackages(input: SearchCateringPackagesInput!): [CateringPackage!]!
+    searchCateringPackages(
+      input: SearchCateringPackagesInput!, 
+      page: Int = 1, 
+      limit: Int = 10
+    ): SearchResult!
   }
 
   type Mutation {

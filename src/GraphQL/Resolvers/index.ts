@@ -1,6 +1,8 @@
 import { adminResolver } from "../../Features/Auth/Admin/GraphQL/Resolver";
 import { userResolvers } from "../../Features/Auth/User/GraphQL/Resolver";
 import { VendorResolvers } from "../../Features/Auth/Vendor/GraphQL/Resolver";
+import { customCateringResolvers } from "../../Features/Services/Catering/Custom/GraphQL/Resolvers";
+import { cateringPackageResolvers } from "../../Features/Services/Catering/Package/GraphQL/Resolvers";
 import { farmhouseResolvers } from "../../Features/Services/FarmHouse/GraphQL/Resolvers";
 import { venueResolver } from "../../Features/Services/Venue/GraphQL/Resolvers";
 import { dateScalar } from "./Scalar";
@@ -15,6 +17,8 @@ export const resolvers = {
     ...adminResolver.Query,
     ...venueResolver.Query,
     ...farmhouseResolvers.Query,
+    ...cateringPackageResolvers.Query,
+    ...customCateringResolvers.Query,
   },
   Mutation: {
     ...userResolvers.Mutation,
@@ -22,5 +26,7 @@ export const resolvers = {
     ...adminResolver.Mutation,
     ...venueResolver.Mutation,
     ...farmhouseResolvers.Mutation,
+    ...cateringPackageResolvers.Mutation,
+    ...customCateringResolvers.Mutation,
   },
 };

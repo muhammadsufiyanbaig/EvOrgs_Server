@@ -80,7 +80,7 @@ export class CateringPackageService {
       serviceArea,
       description,
       imageUrl,
-      price: price.toString(), // Ensure price is stored as string
+      price, // Keep price as a number - the model will convert it to string
       minGuests,
       maxGuests,
       menuItems: menuItems || [],
@@ -128,7 +128,7 @@ export class CateringPackageService {
     
     const updateData = {
       ...rest,
-      ...(price !== undefined ? { price: price.toString() } : {}),
+      ...(price !== undefined ? { price } : {}),
       updatedAt: new Date(),
     };
 

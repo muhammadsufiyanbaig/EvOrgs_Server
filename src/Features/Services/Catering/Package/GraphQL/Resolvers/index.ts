@@ -1,11 +1,11 @@
 // resolvers/CateringPackageResolver.ts
 import { CateringPackageService } from '../../Service';
 import { Context } from '../../../../../../GraphQL/Context';
-import { 
+import {
   CateringPackage,
-  CateringPackageInput, 
-  CateringPackageUpdateInput, 
-  SearchCateringPackagesInput 
+  CateringPackageInput,
+  CateringPackageUpdateInput,
+  SearchCateringPackagesInput
 } from '../../Types';
 
 type SearchResult = {
@@ -16,11 +16,11 @@ type SearchResult = {
   totalPages: number;
 };
 
-export const resolvers = {
+export const cateringPackageResolvers = {
   Query: {
     cateringPackage: async (
-      _: unknown, 
-      { id }: { id: string }, 
+      _: unknown,
+      { id }: { id: string },
       context: Context
     ): Promise<CateringPackage> => {
       if (!context.vendor) {
@@ -32,8 +32,8 @@ export const resolvers = {
     },
 
     vendorCateringPackages: async (
-      _: unknown, 
-      __: unknown, 
+      _: unknown,
+      __: unknown,
       context: Context
     ): Promise<CateringPackage[]> => {
       if (!context.vendor) {
@@ -46,14 +46,14 @@ export const resolvers = {
 
     searchCateringPackages: async (
       _: unknown,
-      { 
-        input, 
-        page = 1, 
-        limit = 10 
-      }: { 
-        input: SearchCateringPackagesInput; 
-        page?: number; 
-        limit?: number 
+      {
+        input,
+        page = 1,
+        limit = 10
+      }: {
+        input: SearchCateringPackagesInput;
+        page?: number;
+        limit?: number
       },
       context: Context
     ): Promise<SearchResult> => {
@@ -64,8 +64,8 @@ export const resolvers = {
 
   Mutation: {
     createCateringPackage: async (
-      _: unknown, 
-      { input }: { input: CateringPackageInput }, 
+      _: unknown,
+      { input }: { input: CateringPackageInput },
       context: Context
     ): Promise<CateringPackage> => {
       if (!context.vendor) {
@@ -77,14 +77,14 @@ export const resolvers = {
     },
 
     updateCateringPackage: async (
-      _: unknown, 
-      { 
-        id, 
-        input 
-      }: { 
-        id: string; 
-        input: CateringPackageUpdateInput 
-      }, 
+      _: unknown,
+      {
+        id,
+        input
+      }: {
+        id: string;
+        input: CateringPackageUpdateInput
+      },
       context: Context
     ): Promise<CateringPackage> => {
       if (!context.vendor) {
@@ -96,8 +96,8 @@ export const resolvers = {
     },
 
     deleteCateringPackage: async (
-      _: unknown, 
-      { id }: { id: string }, 
+      _: unknown,
+      { id }: { id: string },
       context: Context
     ): Promise<boolean> => {
       if (!context.vendor) {
@@ -109,8 +109,8 @@ export const resolvers = {
     },
 
     toggleCateringPackageAvailability: async (
-      _: unknown, 
-      { id }: { id: string }, 
+      _: unknown,
+      { id }: { id: string },
       context: Context
     ): Promise<CateringPackage> => {
       if (!context.vendor) {

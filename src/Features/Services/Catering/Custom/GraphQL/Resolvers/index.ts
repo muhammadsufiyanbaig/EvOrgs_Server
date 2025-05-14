@@ -1,13 +1,11 @@
-import { sql, eq, and } from 'drizzle-orm';
-import { cateringCustomPackages } from '../../../../../../Schema';
+import { CustomPackageService } from '../../Service';
 import {
-  CustomPackageStatus,
+  GraphQLContext,
+  CustomGraphQLError,
   CreateCustomPackageInput,
   QuoteCustomPackageInput,
   RespondToQuoteInput,
-  CustomPackageSearchFilters,
-  GraphQLContext,
-  CustomGraphQLError
+  CustomPackageSearchFilters
 } from '../../Types';
 
 export const customCateringResolvers = {
@@ -22,10 +20,8 @@ export const customCateringResolvers = {
         throw CustomGraphQLError.unauthenticated();
       }
 
-      return await context.db
-        .select()
-        .from(cateringCustomPackages)
-        .where(eq(cateringCustomPackages.userId, context.user.id));
+      const service = new CustomPackageService(context.db);
+      return await service.getUserCustomPackages(context.user.id);
     },
 
     // Vendor fetches their custom packages
@@ -38,10 +34,8 @@ export const customCateringResolvers = {
         throw CustomGraphQLError.unauthenticated();
       }
 
-      return await context.db
-        .select()
-        .from(cateringCustomPackages)
-        .where(eq(cateringCustomPackages.vendorId, context.vendor.id));
+      const service = new CustomPackageService(context.db);
+      return await service.getVendorCustomPackages(context.vendor.id);
     },
 
     // Get a single custom package by ID
@@ -54,25 +48,12 @@ export const customCateringResolvers = {
         throw CustomGraphQLError.unauthenticated();
       }
 
-      const [customPackage] = await context.db
-        .select()
-        .from(cateringCustomPackages)
-        .where(eq(cateringCustomPackages.id, packageId))
-        .limit(1);
-
-      if (!customPackage) {
-        throw CustomGraphQLError.notFound('Package not found');
-      }
-
-      // Additional authorization check
-      if (context.user && customPackage.userId !== context.user.id) {
-        throw CustomGraphQLError.forbidden();
-      }
-      if (context.vendor && customPackage.vendorId !== context.vendor.id) {
-        throw CustomGraphQLError.forbidden();
-      }
-
-      return customPackage;
+      const service = new CustomPackageService(context.db);
+      return await service.getCustomPackageById(
+        packageId, 
+        context.user?.id, 
+        context.vendor?.id
+      );
     },
 
     // Search custom packages with various filters
@@ -85,37 +66,8 @@ export const customCateringResolvers = {
         throw CustomGraphQLError.unauthenticated();
       }
 
-      // Build dynamic where clause
-      const whereConditions = [] as any[];
-
-      // Vendor can only see their own packages
-      whereConditions.push(eq(cateringCustomPackages.vendorId, context.vendor.id));
-
-      // Status filter
-      if (filters?.status) {
-        whereConditions.push(eq(cateringCustomPackages.status, filters.status));
-      }
-
-      // Guest count filters
-      if (filters?.minGuestCount) {
-        whereConditions.push(sql`guest_count >= ${filters.minGuestCount}`);
-      }
-      if (filters?.maxGuestCount) {
-        whereConditions.push(sql`guest_count <= ${filters.maxGuestCount}`);
-      }
-
-      // Date range filters
-      if (filters?.startDate) {
-        whereConditions.push(sql`event_date >= ${filters.startDate}`);
-      }
-      if (filters?.endDate) {
-        whereConditions.push(sql`event_date <= ${filters.endDate}`);
-      }
-
-      return await context.db
-        .select()
-        .from(cateringCustomPackages)
-        .where(and(...whereConditions));
+      const service = new CustomPackageService(context.db);
+      return await service.searchCustomPackages(context.vendor.id, filters);
     },
   },
 
@@ -130,28 +82,8 @@ export const customCateringResolvers = {
         throw CustomGraphQLError.unauthenticated();
       }
 
-      // Input validation
-      if (input.guestCount <= 0) {
-        throw new CustomGraphQLError('Guest count must be positive', {
-          code: 'BAD_INPUT',
-          details: 'Guest count must be greater than zero'
-        });
-      }
-
-      const [newPackage] = await context.db
-        .insert(cateringCustomPackages)
-        .values({
-          vendorId: input.vendorId,
-          userId: context.user.id,
-          orderDetails: input.orderDetails,
-          guestCount: input.guestCount,
-          eventDate: input.eventDate ? new Date(input.eventDate) : null,
-          status: CustomPackageStatus.Requested,
-          price: 0, // Initial price set to 0
-        })
-        .returning();
-
-      return newPackage;
+      const service = new CustomPackageService(context.db);
+      return await service.createCustomPackageRequest(context.user.id, input);
     },
 
     // Vendor quotes a custom package
@@ -164,42 +96,8 @@ export const customCateringResolvers = {
         throw CustomGraphQLError.unauthenticated();
       }
 
-      // Validate price
-      if (input.price <= 0) {
-        throw new CustomGraphQLError('Price must be positive', {
-          code: 'BAD_INPUT',
-          details: 'Price must be greater than zero'
-        });
-      }
-
-      // Ensure the package belongs to this vendor and is in 'Requested' status
-      const [existingPackage] = await context.db
-        .select()
-        .from(cateringCustomPackages)
-        .where(
-          and(
-            eq(cateringCustomPackages.id, input.packageId),
-            eq(cateringCustomPackages.vendorId, context.vendor.id),
-            eq(cateringCustomPackages.status, CustomPackageStatus.Requested)
-          )
-        )
-        .limit(1);
-
-      if (!existingPackage) {
-        throw CustomGraphQLError.notFound('Package not found or not in quotable status');
-      }
-
-      const [updatedPackage] = await context.db
-        .update(cateringCustomPackages)
-        .set({
-          price: input.price,
-          status: CustomPackageStatus.Quoted,
-          updatedAt: new Date()
-        })
-        .where(eq(cateringCustomPackages.id, input.packageId))
-        .returning();
-
-      return updatedPackage;
+      const service = new CustomPackageService(context.db);
+      return await service.quoteCustomPackage(context.vendor.id, input);
     },
 
     // User responds to a vendor's quote
@@ -212,33 +110,8 @@ export const customCateringResolvers = {
         throw CustomGraphQLError.unauthenticated();
       }
 
-      // Ensure the package belongs to this user and is in 'Quoted' status
-      const [existingPackage] = await context.db
-        .select()
-        .from(cateringCustomPackages)
-        .where(
-          and(
-            eq(cateringCustomPackages.id, input.packageId),
-            eq(cateringCustomPackages.userId, context.user.id),
-            eq(cateringCustomPackages.status, CustomPackageStatus.Quoted)
-          )
-        )
-        .limit(1);
-
-      if (!existingPackage) {
-        throw CustomGraphQLError.notFound('Package not found or not in quotable status');
-      }
-
-      const [updatedPackage] = await context.db
-        .update(cateringCustomPackages)
-        .set({
-          status: input.response,
-          updatedAt: new Date()
-        })
-        .where(eq(cateringCustomPackages.id, input.packageId))
-        .returning();
-
-      return updatedPackage;
+      const service = new CustomPackageService(context.db);
+      return await service.respondToCustomPackageQuote(context.user.id, input);
     },
   }
 };

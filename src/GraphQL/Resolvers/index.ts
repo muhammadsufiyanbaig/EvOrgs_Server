@@ -17,7 +17,7 @@ export const resolvers = {
     ...adminResolver.Query,
     ...venueResolver.Query,
     ...farmhouseResolvers.Query,
-    ...cateringPackageResolvers.Query,
+    // ...cateringPackageResolvers.Query,
     ...customCateringResolvers.Query,
   },
   Mutation: {
@@ -26,7 +26,7 @@ export const resolvers = {
     ...adminResolver.Mutation,
     ...venueResolver.Mutation,
     ...farmhouseResolvers.Mutation,
-    ...cateringPackageResolvers.Mutation,
+    // ...cateringPackageResolvers.Mutation,
     ...customCateringResolvers.Mutation,
   },
 };

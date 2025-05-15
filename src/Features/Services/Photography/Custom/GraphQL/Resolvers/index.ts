@@ -4,7 +4,7 @@ import { customPhotographyService } from '../../Service';
 import { CreateCustomOrderInput, QuoteOrderInput, SearchOrdersInput } from '../../Types';
 import { Context } from '../../../../../../GraphQL/Context';
 
-export const resolvers = {
+export const customPhotographyResolver = {
     Query: {
         // User Queries
         getUserCustomOrders: async (_: any, __: any, context: Context) => {

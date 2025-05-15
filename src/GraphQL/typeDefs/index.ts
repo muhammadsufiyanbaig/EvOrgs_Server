@@ -4,6 +4,8 @@ import { VendorTypeDefs } from "../../Features/Auth/Vendor/GraphQL/TypeDefs";
 import { customCateringTypeDefs } from "../../Features/Services/Catering/Custom/GraphQL/TypeDefs";
 import { CateringPackageTypeDefs } from "../../Features/Services/Catering/Package/GraphQL/TypeDefs";
 import { farmhouseTypeDefs } from "../../Features/Services/FarmHouse/GraphQL/TypeDefs";
+import { customPhotographyTypeDefs } from "../../Features/Services/Photography/Custom/GraphQL/TypeDefs";
+import { photographyTypeDefs } from "../../Features/Services/Photography/Package/GraphQL/TypeDefs";
 import { venueTypeDefs } from "../../Features/Services/Venue/GraphQL/TypeDefs";
 
 
@@ -13,6 +15,8 @@ export const typeDefs = [
   AdminTypeDefs,
   venueTypeDefs,
   farmhouseTypeDefs,
-  customCateringTypeDefs,
   CateringPackageTypeDefs,
+  customCateringTypeDefs,
+photographyTypeDefs,
+customPhotographyTypeDefs,
   ];

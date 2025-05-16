@@ -1,6 +1,13 @@
 import { adminResolver } from "../../Features/Auth/Admin/GraphQL/Resolver";
 import { userResolvers } from "../../Features/Auth/User/GraphQL/Resolver";
 import { VendorResolvers } from "../../Features/Auth/Vendor/GraphQL/Resolver";
+import { BookingResolvers } from "../../Features/Booking/GraphQl/Resolver";
+import { customCateringResolvers } from "../../Features/Services/Catering/Custom/GraphQL/Resolvers";
+import { cateringPackageResolvers } from "../../Features/Services/Catering/Package/GraphQL/Resolvers";
+import { farmhouseResolvers } from "../../Features/Services/FarmHouse/GraphQL/Resolvers";
+import { customPhotographyResolver } from "../../Features/Services/Photography/Custom/GraphQL/Resolvers";
+import { photographyResolvers } from "../../Features/Services/Photography/Package/GraphQL/Resolvers";
+import { venueResolver } from "../../Features/Services/Venue/GraphQL/Resolvers";
 import { dateScalar } from "./Scalar";
 
 
@@ -11,10 +18,24 @@ export const resolvers = {
     ...userResolvers.Query,
     ...VendorResolvers.Query,
     ...adminResolver.Query,
+    ...venueResolver.Query,
+    ...farmhouseResolvers.Query,
+    ...cateringPackageResolvers.Query,
+    ...customCateringResolvers.Query,
+    ...photographyResolvers.Query,
+    ...customPhotographyResolver.Query,
+    ...BookingResolvers.Query,
   },
   Mutation: {
     ...userResolvers.Mutation,
     ...VendorResolvers.Mutation,
     ...adminResolver.Mutation,
+    ...venueResolver.Mutation,
+    ...farmhouseResolvers.Mutation,
+    ...cateringPackageResolvers.Mutation,
+    ...customCateringResolvers.Mutation,
+    ...photographyResolvers.Mutation,
+    ...customPhotographyResolver.Mutation,
+    ...BookingResolvers.Mutation,
   },
 };

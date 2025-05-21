@@ -38,9 +38,9 @@ export class PaymentScheduleService {
     }
 
     // Prepare update values
-    const updateValues: Partial<PaymentSchedule> = {};
+    const updateValues: Partial<UpdatePaymentScheduleInput> = {};
 
-    if (input.dueDate !== undefined) updateValues.dueDate = new Date(input.dueDate);
+    if (input.dueDate !== undefined) updateValues.dueDate = input.dueDate;
     if (input.amount !== undefined) updateValues.amount = input.amount;
     if (input.description !== undefined) updateValues.description = input.description;
     if (input.status !== undefined) updateValues.status = input.status;
@@ -72,7 +72,7 @@ export class PaymentScheduleService {
     if (!existingSchedule || existingSchedule.vendorId !== this.vendorId) {
       throw new Error('Payment schedule not found or does not belong to vendor');
     }
-
+    
     // If transactionId provided, verify it exists and belongs to vendor
     if (transactionId) {
       const transactionExists = await this.paymentScheduleModel.verifyTransactionOwnership(transactionId);
@@ -80,13 +80,23 @@ export class PaymentScheduleService {
         throw new Error('Transaction not found or does not belong to vendor');
       }
     }
-
+    
+    // Create update object that matches UpdatePaymentScheduleInput
+    const updateData: UpdatePaymentScheduleInput = {
+      id,
+      status: 'Paid'
+    };
+    
+    // Add transactionId to the separate update object for the model
+    // since it's not part of the UpdatePaymentScheduleInput type
+    const modelUpdateData = {
+      ...updateData,
+      transactionId
+    };
+    
     // Update payment schedule
-    await this.paymentScheduleModel.update(id, {
-      status: 'Paid' as PaymentScheduleStatus,
-      transactionId: transactionId
-    });
-
+    await this.paymentScheduleModel.update(id, modelUpdateData);
+    
     // Return updated payment schedule
     const updatedSchedule = await this.paymentScheduleModel.getById(id);
     return updatedSchedule as PaymentSchedule;
@@ -95,13 +105,13 @@ export class PaymentScheduleService {
   async sendPaymentReminder(id: string): Promise<PaymentSchedule> {
     // Get payment schedule details with user information
     const scheduleDetails = await this.paymentScheduleModel.getScheduleWithUserDetails(id);
-    
+        
     if (!scheduleDetails || scheduleDetails.vendorId !== this.vendorId) {
       throw new Error('Payment schedule not found or does not belong to vendor');
     }
-
-    const { schedule, userEmail, userName } = scheduleDetails;
     
+    const { schedule, userEmail, userName } = scheduleDetails;
+        
     // In a real implementation, this would send an actual email
     await sendPaymentReminderEmail({
       to: userEmail,
@@ -110,13 +120,23 @@ export class PaymentScheduleService {
       dueDate: schedule.dueDate,
       description: schedule.description
     });
-
-    // Update payment schedule to mark reminder as sent
-    await this.paymentScheduleModel.update(id, {
-      reminderSent: true,
+    
+    // Create update object that matches UpdatePaymentScheduleInput
+    const updateData: UpdatePaymentScheduleInput = {
+      id,
+      reminderSent: true
+    };
+    
+    // Add lastReminderDate to the separate update object for the model
+    // since it's not part of the UpdatePaymentScheduleInput type
+    const modelUpdateData = {
+      ...updateData,
       lastReminderDate: new Date()
-    });
-
+    };
+    
+    // Update payment schedule
+    await this.paymentScheduleModel.update(id, modelUpdateData);
+    
     // Return updated payment schedule
     const updatedSchedule = await this.paymentScheduleModel.getById(id);
     return updatedSchedule as PaymentSchedule;
@@ -158,3 +178,18 @@ export class PaymentScheduleService {
     return this.paymentScheduleModel.findOverdue();
   }
 }
+
+// Helper function for sending emails (mock implementation)
+// This should be in the utils/email.ts file referenced in the import
+/* 
+async function sendPaymentReminderEmail(params: {
+  to: string;
+  name: string;
+  amount: number;
+  dueDate: Date;
+  description?: string;
+}): Promise<void> {
+  // Email sending logic would go here
+  console.log(`Email sent to ${params.to} for payment reminder of ${params.amount}`);
+}
+*/

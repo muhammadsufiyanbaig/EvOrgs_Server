@@ -1,12 +1,10 @@
-// src/Features/POS/models/PaymentScheduleModel.ts
-
 import { DrizzleDB } from '../../../../Config/db';
 import { paymentSchedules, bookings, posTransactions, users } from '../../../../Schema';
 import { v4 as uuidv4 } from 'uuid';
-import { and, eq, gte, desc, lte, isNull } from 'drizzle-orm';
-import { 
-  PaymentSchedule, 
-  CreatePaymentScheduleInput, 
+import { and, eq, gte, desc, lte, SQL } from 'drizzle-orm';
+import {
+  PaymentSchedule,
+  CreatePaymentScheduleInput,
   UpdatePaymentScheduleInput,
   PaymentScheduleStatus
 } from '../../Types';
@@ -45,25 +43,32 @@ export class PaymentScheduleModel {
   }
 
   async create(input: CreatePaymentScheduleInput): Promise<PaymentSchedule> {
-    const paymentSchedule = {
+    const paymentScheduleData = {
       id: uuidv4(),
       bookingId: input.bookingId,
-      dueDate: new Date(input.dueDate),
-      amount: input.amount,
-      description: input.description,
+      dueDate: new Date(input.dueDate).toISOString(),
+      amount: String(input.amount),
+      description: input.description || null,
       status: 'Pending' as PaymentScheduleStatus,
       reminderSent: false,
+      lastReminderDate: null,
+      transactionId: null,
       createdAt: new Date(),
       updatedAt: new Date(),
     };
 
-    await this.db.insert(paymentSchedules).values(paymentSchedule);
+    await this.db.insert(paymentSchedules).values(paymentScheduleData);
 
-    return paymentSchedule as PaymentSchedule;
+    // Convert back to PaymentSchedule type for return
+    return {
+      ...paymentScheduleData,
+      dueDate: new Date(paymentScheduleData.dueDate),
+      amount: Number(paymentScheduleData.amount),
+    } as unknown as PaymentSchedule;
   }
 
   async findById(id: string): Promise<{ schedule: PaymentSchedule, vendorId: string } | null> {
-    const schedule = await this.db
+    const result = await this.db
       .select({
         schedule: paymentSchedules,
         vendorId: bookings.vendorId
@@ -73,76 +78,106 @@ export class PaymentScheduleModel {
       .where(eq(paymentSchedules.id, id))
       .limit(1);
 
-    return schedule.length > 0 ? schedule[0] : null;
+    if (result.length === 0) return null;
+
+    const { schedule, vendorId } = result[0];
+    return { 
+      schedule: {
+        ...schedule,
+        dueDate: new Date(schedule.dueDate),
+        amount: Number(schedule.amount)
+      } as unknown as PaymentSchedule, 
+      vendorId 
+    };
   }
 
-  async update(id: string, updateValues: Partial<PaymentSchedule>): Promise<void> {
+   async update(id: string, updateValues: Partial<UpdatePaymentScheduleInput>): Promise<void> {
+    // Convert values for database compatibility
+    const dbUpdateValues: Record<string, any> = { 
+      updatedAt: new Date() 
+    };
+    
+    // Convert each property with proper type handling
+    if (updateValues.id !== undefined) dbUpdateValues.id = updateValues.id;
+    if (updateValues.dueDate !== undefined) dbUpdateValues.dueDate = new Date(updateValues.dueDate).toISOString();
+    if (updateValues.amount !== undefined) dbUpdateValues.amount = String(updateValues.amount);
+    if (updateValues.description !== undefined) dbUpdateValues.description = updateValues.description;
+    if (updateValues.status !== undefined) dbUpdateValues.status = updateValues.status;
+    if (updateValues.reminderSent !== undefined) dbUpdateValues.reminderSent = updateValues.reminderSent;
+    
     await this.db.update(paymentSchedules)
-      .set({ ...updateValues, updatedAt: new Date() })
+      .set(dbUpdateValues)
       .where(eq(paymentSchedules.id, id));
   }
 
   async delete(id: string): Promise<void> {
-    await this.db.delete(paymentSchedules)
-      .where(eq(paymentSchedules.id, id));
+    await this.db.delete(paymentSchedules).where(eq(paymentSchedules.id, id));
   }
 
   async getById(id: string): Promise<PaymentSchedule | null> {
-    const schedule = await this.db.select()
+    const result = await this.db.select()
       .from(paymentSchedules)
       .where(eq(paymentSchedules.id, id))
       .limit(1);
 
-    return schedule.length > 0 ? schedule[0] as unknown as PaymentSchedule : null;
+    if (!result.length) return null;
+    
+    return {
+      ...result[0],
+      dueDate: new Date(result[0].dueDate),
+      amount: Number(result[0].amount)
+    } as unknown as PaymentSchedule;
   }
 
   async findByBooking(bookingId: string): Promise<PaymentSchedule[]> {
-    const schedules = await this.db.select()
+    const result = await this.db.select()
       .from(paymentSchedules)
       .where(eq(paymentSchedules.bookingId, bookingId))
       .orderBy(paymentSchedules.dueDate);
 
-    return schedules as unknown as PaymentSchedule[];
+    return result as unknown as PaymentSchedule[];
   }
 
-  async findAll(): Promise<PaymentSchedule[]> {
-    const schedules = await this.db
-      .select({
-        schedule: paymentSchedules
-      })
+ async findAll(): Promise<PaymentSchedule[]> {
+    const result = await this.db
+      .select()
       .from(paymentSchedules)
       .innerJoin(bookings, eq(paymentSchedules.bookingId, bookings.id))
       .where(eq(bookings.vendorId, this.vendorId))
-      .orderBy(paymentSchedules.dueDate);
+      .orderBy(desc(paymentSchedules.dueDate));
 
-    return schedules.map(item => item.schedule) as unknown as PaymentSchedule[];
+    return result.map(row => ({
+      ...row.payment_schedules,
+      dueDate: new Date(row.payment_schedules.dueDate),
+      amount: Number(row.payment_schedules.amount)
+    })) as unknown as PaymentSchedule[];
   }
-
-  async findUpcoming(limit: number = 5): Promise<PaymentSchedule[]> {
+    async findUpcoming(limit = 5): Promise<PaymentSchedule[]> {
     const today = new Date();
-    
-    const schedules = await this.db
-      .select({
-        schedule: paymentSchedules
-      })
+
+    const result = await this.db
+      .select()
       .from(paymentSchedules)
       .innerJoin(bookings, eq(paymentSchedules.bookingId, bookings.id))
       .where(and(
         eq(bookings.vendorId, this.vendorId),
         eq(paymentSchedules.status, 'Pending'),
-        gte(paymentSchedules.dueDate, today)
+        gte(paymentSchedules.dueDate, today.toISOString().split('T')[0])
       ))
       .orderBy(paymentSchedules.dueDate)
       .limit(limit);
 
-    return schedules.map(item => item.schedule) as unknown as PaymentSchedule[];
+    return result.map(row => ({
+      ...row.payment_schedules,
+      dueDate: new Date(row.payment_schedules.dueDate),
+      amount: Number(row.payment_schedules.amount)
+    })) as unknown as PaymentSchedule[];
   }
+
 
   async getPendingTotal(): Promise<number> {
     const result = await this.db
-      .select({
-        total: paymentSchedules.amount
-      })
+      .select({ amount: paymentSchedules.amount })
       .from(paymentSchedules)
       .innerJoin(bookings, eq(paymentSchedules.bookingId, bookings.id))
       .where(and(
@@ -150,27 +185,28 @@ export class PaymentScheduleModel {
         eq(paymentSchedules.status, 'Pending')
       ));
 
-    // Sum the amounts manually since we can't use SQL aggregate functions directly
-    return result.reduce((sum, item) => sum + Number(item.total), 0);
+    return result.reduce((sum, r) => sum + Number(r.amount), 0);
   }
 
   async findOverdue(): Promise<PaymentSchedule[]> {
     const today = new Date();
-    
-    const schedules = await this.db
-      .select({
-        schedule: paymentSchedules
-      })
+
+    const result = await this.db
+      .select()
       .from(paymentSchedules)
       .innerJoin(bookings, eq(paymentSchedules.bookingId, bookings.id))
       .where(and(
         eq(bookings.vendorId, this.vendorId),
         eq(paymentSchedules.status, 'Pending'),
-        lte(paymentSchedules.dueDate, today)
+        lte(paymentSchedules.dueDate, today.toISOString().split('T')[0])
       ))
-      .orderBy(paymentSchedules.dueDate);
+      .orderBy(desc(paymentSchedules.dueDate));
 
-    return schedules.map(item => item.schedule) as unknown as PaymentSchedule[];
+    return result.map(row => ({
+      ...row.payment_schedules,
+      dueDate: new Date(row.payment_schedules.dueDate),
+      amount: Number(row.payment_schedules.amount)
+    })) as unknown as PaymentSchedule[];
   }
 
   async getScheduleWithUserDetails(id: string): Promise<{
@@ -179,12 +215,11 @@ export class PaymentScheduleModel {
     userName: string,
     vendorId: string
   } | null> {
-    const details = await this.db
+    const result = await this.db
       .select({
         schedule: paymentSchedules,
-        booking: bookings,
         userEmail: users.email,
-        userName: users.name,
+        userName: users.firstName, // Changed from users.name to users.firstName
         vendorId: bookings.vendorId
       })
       .from(paymentSchedules)
@@ -193,11 +228,18 @@ export class PaymentScheduleModel {
       .where(eq(paymentSchedules.id, id))
       .limit(1);
 
-    if (details.length === 0) {
-      return null;
-    }
+    if (result.length === 0) return null;
 
-    const { schedule, userEmail, userName, vendorId } = details[0];
-    return { schedule, userEmail, userName, vendorId };
+    const { schedule, userEmail, userName, vendorId } = result[0];
+    return { 
+      schedule: {
+        ...schedule,
+        dueDate: new Date(schedule.dueDate),
+        amount: Number(schedule.amount)
+      } as unknown as PaymentSchedule, 
+      userEmail, 
+      userName, 
+      vendorId 
+    };
   }
 }

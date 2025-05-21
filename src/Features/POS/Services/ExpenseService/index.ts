@@ -2,10 +2,10 @@
 
 import { DrizzleDB } from '../../../../Config/db';
 import { ExpenseModel } from '../../Model/ExpenseModel';
-import { 
-  ServiceExpense, 
-  CreateServiceExpenseInput, 
-  UpdateServiceExpenseInput 
+import {
+  ServiceExpense,
+  CreateServiceExpenseInput,
+  UpdateServiceExpenseInput
 } from '../../Types';
 
 export class ExpenseService {
@@ -33,14 +33,14 @@ export class ExpenseService {
       throw new Error('Expense not found or does not belong to vendor');
     }
 
-    // Prepare update values
-    const updateValues: Partial<ServiceExpense> = {};
+    // Prepare update values matching the expected UpdateServiceExpenseInput type
+    const updateValues: Partial<UpdateServiceExpenseInput> = {};
 
     if (input.description !== undefined) updateValues.description = input.description;
     if (input.amount !== undefined) updateValues.amount = input.amount;
     if (input.category !== undefined) updateValues.category = input.category;
     if (input.receiptUrl !== undefined) updateValues.receiptUrl = input.receiptUrl;
-    if (input.expenseDate !== undefined) updateValues.expenseDate = new Date(input.expenseDate);
+    if (input.expenseDate !== undefined) updateValues.expenseDate = input.expenseDate;
 
     // Update expense
     await this.expenseModel.update(input.id, updateValues);

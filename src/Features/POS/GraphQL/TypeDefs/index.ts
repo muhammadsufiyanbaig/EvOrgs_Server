@@ -95,6 +95,12 @@ export const posTypeDefs = gql`
     vendor: Vendor
   }
 
+  # Helper type for count by type responses
+  type TypeAmountPair {
+    type: String!
+    amount: Float!
+  }
+
   # Input Types
   input CreateTransactionInput {
     bookingId: ID!
@@ -115,6 +121,14 @@ export const posTypeDefs = gql`
     receiptNumber: String
     paymentGatewayReference: String
     status: TransactionStatus
+  }
+
+  input TransactionFilterInput {
+    startDate: String
+    endDate: String
+    transactionType: TransactionType
+    status: TransactionStatus
+    bookingId: ID
   }
 
   input CreatePaymentScheduleInput {
@@ -151,89 +165,50 @@ export const posTypeDefs = gql`
     expenseDate: String
   }
 
-  # Dashboard summary response
-  type FinancialSummary {
-    totalTransactions: Int!
-    totalRevenue: Float!
-    pendingPayments: Float!
-    totalExpenses: Float!
-    netProfit: Float!
-    transactionsByType: [TypeAmountPair!]!
-    recentTransactions: [PosTransaction!]!
-    upcomingPayments: [PaymentSchedule!]!
-  }
-
-  type TypeAmountPair {
-    type: String!
-    amount: Float!
-  }
-
-  # Filter input for transactions
-  input TransactionFilterInput {
-    startDate: String
-    endDate: String
-    transactionType: TransactionType
-    status: TransactionStatus
-    bookingId: ID
-  }
-
-  # Report input
-  input ReportPeriodInput {
-    startDate: String!
-    endDate: String!
-    groupBy: String # daily, weekly, monthly
-  }
-
-  # Report response
-  type RevenueReportData {
-    period: String!
-    revenue: Float!
-    expenses: Float!
-    profit: Float!
-    transactionCount: Int!
-  }
-
-  type RevenueReport {
-    total: Float!
-    data: [RevenueReportData!]!
-  }
-
   # Extend existing types
   extend type Query {
-    # Transactions
-    posTransactions(filter: TransactionFilterInput): [PosTransaction!]!
-    posTransaction(id: ID!): PosTransaction
+    # Transaction Queries
+    transaction(id: ID!): PosTransaction
+    transactions(filter: TransactionFilterInput): [PosTransaction!]!
+    recentTransactions(limit: Int): [PosTransaction!]!
+    totalRevenue: Float!
+    transactionCountByType: [TypeAmountPair!]!
+    transactionCount: Int!
     
-    # Payment Schedules
-    paymentSchedules(bookingId: ID): [PaymentSchedule!]!
+    # Payment Schedule Queries
     paymentSchedule(id: ID!): PaymentSchedule
+    paymentSchedulesByBooking(bookingId: ID!): [PaymentSchedule!]!
+    allPaymentSchedules: [PaymentSchedule!]!
+    upcomingPayments(limit: Int): [PaymentSchedule!]!
+    pendingPaymentsTotal: Float!
+    overduePayments: [PaymentSchedule!]!
     
-    # Service Expenses
-    serviceExpenses(bookingId: ID): [ServiceExpense!]!
-    serviceExpense(id: ID!): ServiceExpense
-    
-    # Dashboard and reports
-    vendorFinancialSummary: FinancialSummary!
-    vendorRevenueReport(input: ReportPeriodInput!): RevenueReport!
+    # Expense Queries
+    expense(id: ID!): ServiceExpense
+    expensesByBooking(bookingId: ID!): [ServiceExpense!]!
+    allExpenses(startDate: String, endDate: String): [ServiceExpense!]!
+    totalExpenses(startDate: String, endDate: String): Float!
+    expensesByCategory: [TypeAmountPair!]!
+    monthlyExpenses(year: Int!): [TypeAmountPair!]!
   }
 
   extend type Mutation {
-    # Transaction mutations
-    createPosTransaction(input: CreateTransactionInput!): PosTransaction!
-    updatePosTransaction(input: UpdateTransactionInput!): PosTransaction!
-    deletePosTransaction(id: ID!): Boolean!
-    processPosTransaction(id: ID!): PosTransaction!
+    # Transaction Mutations
+    createTransaction(input: CreateTransactionInput!): PosTransaction!
+    updateTransaction(input: UpdateTransactionInput!): PosTransaction!
+    processTransaction(id: ID!): PosTransaction!
+    deleteTransaction(id: ID!): Boolean!
     
-    # Payment schedule mutations
+    # Payment Schedule Mutations
     createPaymentSchedule(input: CreatePaymentScheduleInput!): PaymentSchedule!
     updatePaymentSchedule(input: UpdatePaymentScheduleInput!): PaymentSchedule!
     deletePaymentSchedule(id: ID!): Boolean!
     markPaymentAsPaid(id: ID!, transactionId: ID): PaymentSchedule!
     sendPaymentReminder(id: ID!): PaymentSchedule!
     
-    # Service expense mutations
-    createServiceExpense(input: CreateServiceExpenseInput!): ServiceExpense!
-    updateServiceExpense(input: UpdateServiceExpenseInput!): ServiceExpense!
-    deleteServiceExpense(id: ID!): Boolean!
+    # Expense Mutations
+    createExpense(input: CreateServiceExpenseInput!): ServiceExpense!
+    updateExpense(input: UpdateServiceExpenseInput!): ServiceExpense!
+    deleteExpense(id: ID!): Boolean!
   }
 `;

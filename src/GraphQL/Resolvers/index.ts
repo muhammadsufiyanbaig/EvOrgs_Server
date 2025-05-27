@@ -2,6 +2,7 @@ import { adminResolver } from "../../Features/Auth/Admin/GraphQL/Resolver";
 import { userResolvers } from "../../Features/Auth/User/GraphQL/Resolver";
 import { VendorResolvers } from "../../Features/Auth/Vendor/GraphQL/Resolver";
 import { BookingResolvers } from "../../Features/Booking/GraphQl/Resolver";
+import { posResolvers } from "../../Features/POS/GraphQL/Resolver";
 import { customCateringResolvers } from "../../Features/Services/Catering/Custom/GraphQL/Resolvers";
 import { cateringPackageResolvers } from "../../Features/Services/Catering/Package/GraphQL/Resolvers";
 import { farmhouseResolvers } from "../../Features/Services/FarmHouse/GraphQL/Resolvers";
@@ -25,6 +26,7 @@ export const resolvers = {
     ...photographyResolvers.Query,
     ...customPhotographyResolver.Query,
     ...BookingResolvers.Query,
+    ...posResolvers.Query,
   },
   Mutation: {
     ...userResolvers.Mutation,
@@ -37,5 +39,6 @@ export const resolvers = {
     ...photographyResolvers.Mutation,
     ...customPhotographyResolver.Mutation,
     ...BookingResolvers.Mutation,
+    ...posResolvers.Mutation,
   },
 };

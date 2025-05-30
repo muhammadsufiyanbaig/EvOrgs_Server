@@ -1,6 +1,7 @@
 import { AdminTypeDefs } from "../../Features/Auth/Admin/GraphQL/TypeDefs";
 import { UserTypeDefs } from "../../Features/Auth/User/GraphQL/TypeDefs";
 import { VendorTypeDefs } from "../../Features/Auth/Vendor/GraphQL/TypeDefs";
+import { blogTypeDefs } from "../../Features/Blog/GraphQL/TypeDefs";
 import { BookingTypeDefs } from "../../Features/Booking/GraphQl/TypeDefs";
 import { posTypeDefs } from "../../Features/POS/GraphQL/TypeDefs";
 import { reviewTypeDefs } from "../../Features/Reviews/GraphQL/TypeDefs";
@@ -24,5 +25,6 @@ export const typeDefs = [
   customPhotographyTypeDefs,
   BookingTypeDefs,
   posTypeDefs,
-  reviewTypeDefs
+  reviewTypeDefs,
+  blogTypeDefs,
 ];

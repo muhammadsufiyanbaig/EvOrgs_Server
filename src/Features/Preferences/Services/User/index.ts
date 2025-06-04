@@ -1,25 +1,23 @@
-import { DrizzleDB } from '../../../../Config/db';
-import { userPreferences } from '../../../../Schema';
-import { eq } from 'drizzle-orm';
 import { v4 as uuidv4 } from 'uuid';
+import { DrizzleDB } from '../../../../Config/db';
 import { UserPreference, UserPreferenceInput } from '../../Types';
+import { UserPreferenceModel } from '../../Model/User';
 
 export class UserPreferenceService {
   private db: DrizzleDB;
+  private userPreferenceModel: UserPreferenceModel;
 
   constructor(db: DrizzleDB) {
     this.db = db;
+    this.userPreferenceModel = new UserPreferenceModel();
   }
 
   // Get user preferences (create default if doesn't exist)
   async getUserPreferences(userId: string): Promise<UserPreference> {
     try {
-      let preferences = await this.db.select()
-        .from(userPreferences)
-        .where(eq(userPreferences.userId, userId))
-        .limit(1);
+      let preferences = await this.userPreferenceModel.findByUserId(this.db, userId);
 
-      if (preferences.length === 0) {
+      if (!preferences) {
         // Create default preferences
         const defaultPrefs = {
           id: uuidv4(),
@@ -30,11 +28,10 @@ export class UserPreferenceService {
           updatedAt: new Date(),
         };
 
-        await this.db.insert(userPreferences).values(defaultPrefs);
-        return defaultPrefs;
+        preferences = await this.userPreferenceModel.create(this.db, defaultPrefs);
       }
 
-      return preferences[0] as UserPreference;
+      return preferences;
     } catch (error) {
       console.error('Error getting user preferences:', error);
       throw new Error('Failed to get user preferences');
@@ -52,9 +49,7 @@ export class UserPreferenceService {
         updatedAt: new Date(),
       };
 
-      await this.db.update(userPreferences)
-        .set(updateData)
-        .where(eq(userPreferences.userId, userId));
+      await this.userPreferenceModel.updateByUserId(this.db, userId, updateData);
 
       return await this.getUserPreferences(userId);
     } catch (error) {
@@ -76,5 +71,17 @@ export class UserPreferenceService {
       console.error('Error resetting user preferences:', error);
       throw new Error('Failed to reset user preferences');
     }
+  }
+
+  // Private method to get default preferences structure
+  private getDefaultPreferences(userId: string): Omit<UserPreference, 'id'> & { id: string } {
+    return {
+      id: uuidv4(),
+      userId,
+      pushNotifications: true,
+      emailNotifications: true,
+      createdAt: new Date(),
+      updatedAt: new Date(),
+    };
   }
 }

@@ -1,3 +1,4 @@
+import { adResolvers } from "../../Features/Advertisment/GraphQL/Resolver";
 import { adminResolver } from "../../Features/Auth/Admin/GraphQL/Resolver";
 import { userResolvers } from "../../Features/Auth/User/GraphQL/Resolver";
 import { VendorResolvers } from "../../Features/Auth/Vendor/GraphQL/Resolver";
@@ -11,6 +12,7 @@ import { farmhouseResolvers } from "../../Features/Services/FarmHouse/GraphQL/Re
 import { customPhotographyResolver } from "../../Features/Services/Photography/Custom/GraphQL/Resolvers";
 import { photographyResolvers } from "../../Features/Services/Photography/Package/GraphQL/Resolvers";
 import { venueResolver } from "../../Features/Services/Venue/GraphQL/Resolvers";
+import { supportResolvers } from "../../Features/Support/GraphQL/Resolver";
 import { dateScalar } from "./Scalar";
 
 
@@ -31,6 +33,8 @@ export const resolvers = {
     ...posResolvers.Query,
     ...reviewResolvers.Query,
     ...blogResolvers.Query,
+    ...adResolvers.Query,
+    ...supportResolvers.Query,
   },
   Mutation: {
     ...userResolvers.Mutation,
@@ -46,5 +50,7 @@ export const resolvers = {
     ...posResolvers.Mutation,
     ...reviewResolvers.Mutation,
     ...blogResolvers.Mutation,
+    ...adResolvers.Mutation,
+    ...supportResolvers.Mutation,
   },
 };

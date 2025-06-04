@@ -167,6 +167,17 @@ export const adTypeDefs = gql`
     adminNotes: String
   }
 
+  # NEW: Missing input type for updateServiceAd mutation
+  input UpdateServiceAdInput {
+    adTitle: String
+    adDescription: String
+    adImage: String
+    finalPrice: Float
+    adminStartDate: String
+    adminEndDate: String
+    targetAudience: [String!]
+  }
+
   input CreateExternalAdInput {
     advertiserName: String!
     advertiserEmail: String!
@@ -214,6 +225,7 @@ export const adTypeDefs = gql`
     getMyAdRequests(status: RequestStatus): [AdRequest!]!
     getMyActiveAds: [ServiceAd!]!
     getAdRequestById(id: ID!): AdRequest
+    getMyPayments: [AdPayment!]!
     
     # ADMIN QUERIES - Admins can see everything
     getAllAdRequests(status: RequestStatus, vendorId: ID): [AdRequest!]!
@@ -225,11 +237,14 @@ export const adTypeDefs = gql`
     # PAYMENT QUERIES
     getAdPayments(adId: ID, externalAdId: ID): [AdPayment!]!
     getPaymentById(id: ID!): AdPayment
-    getMyPayments: [AdPayment!]!
     
     # ANALYTICS
     getAdAnalytics(adId: ID!): AdAnalytics
     getDashboardStats: DashboardStats
+    
+    # NEW: Missing queries from resolvers
+    getTopPerformingAds(limit: Int): [ServiceAd!]!
+    getRevenueAnalytics(startDate: String, endDate: String): RevenueAnalytics
   }
 
   type Mutation {
@@ -248,6 +263,11 @@ export const adTypeDefs = gql`
     resumeServiceAd(id: ID!): ServiceAd!
     cancelServiceAd(id: ID!): ServiceAd!
     extendServiceAd(id: ID!, newEndDate: String!): ServiceAd!
+    
+    # NEW: Missing mutations from resolvers
+    activateServiceAd(id: ID!): ServiceAd!
+    expireServiceAd(id: ID!): ServiceAd!
+    updateServiceAd(id: ID!, input: UpdateServiceAdInput!): ServiceAd!
     
     # EXTERNAL ADS (Admin only)
     createExternalAd(input: CreateExternalAdInput!): ExternalAd!
@@ -283,5 +303,21 @@ export const adTypeDefs = gql`
     totalImpressions: Int!
     totalClicks: Int!
     averageCTR: Float!
+  }
+
+  # NEW: Missing type for revenue analytics
+  type RevenueAnalytics {
+    totalRevenue: Float!
+    dailyRevenue: [DailyRevenue!]!
+    averageDailyRevenue: Float!
+    revenueGrowth: Float!
+    topRevenueAds: [ServiceAd!]!
+  }
+
+  # NEW: Supporting type for daily revenue data
+  type DailyRevenue {
+    date: String!
+    revenue: Float!
+    adCount: Int!
   }
 `;

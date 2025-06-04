@@ -4,6 +4,7 @@ import { AdModel } from '../Model';
 import { InferSelectModel } from 'drizzle-orm';
 import { servicesAds, externalAds, adPayments } from '../../../Schema';
 import { Context } from '../../../GraphQL/Context';
+import { Vendor } from '../../Auth/Vendor/Types';
 
 interface AdAnalyticsInput {
   adId: string;
@@ -21,6 +22,9 @@ interface AdAnalyticsResponse {
 }
 
 export class AdService {
+  createAdRequest(input: any, vendor: Vendor | undefined) {
+    throw new Error('Method not implemented.');
+  }
   private model: AdModel;
 
   constructor(model: AdModel) {

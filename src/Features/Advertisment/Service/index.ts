@@ -27,7 +27,7 @@ export class AdService {
     this.model = model;
   }
 
-  async getActiveAds(adType?: string, entityType?: string) {
+  async getActiveAds(adType?: "Featured" | "Sponsored" | "Premium", entityType?: "Venue" | "Farmhouse" | "Photography Package" | "Catering Package") {
     return await this.model.getActiveAds(adType, entityType);
   }
 
@@ -43,7 +43,7 @@ export class AdService {
     return await this.model.getSponsoredAds();
   }
 
-  async getMyAdRequests(vendor: Context['vendor'], status?: string) {
+  async getMyAdRequests(vendor: Context['vendor'], status?: "Pending" | "Approved" | "Rejected" | "Active" | "Expired") {
     if (!vendor) {
       throw new GraphQLError('Vendor authentication required', {
         extensions: { code: 'UNAUTHENTICATED' }
@@ -79,7 +79,7 @@ export class AdService {
     return await this.model.getMyPayments(vendor.id);
   }
 
-  async getAllAdRequests(admin: Context['Admin'], status?: string, vendorId?: string) {
+  async getAllAdRequests(admin: Context['Admin'], status?: "Pending" | "Approved" | "Rejected" | "Active" | "Expired", vendorId?: string) {
     if (!admin) {
       throw new GraphQLError('Admin access required', {
         extensions: { code: 'FORBIDDEN' }
@@ -88,7 +88,7 @@ export class AdService {
     return await this.model.getAllAdRequests(status, vendorId);
   }
 
-  async getAllServiceAds(admin: Context['Admin'], status?: string, vendorId?: string) {
+  async getAllServiceAds(admin: Context['Admin'], status?: "Pending" | "Approved" | "Rejected" | "Active" | "Expired", vendorId?: string) {
     if (!admin) {
       throw new GraphQLError('Admin access required', {
         extensions: { code: 'FORBIDDEN' }
@@ -106,7 +106,7 @@ export class AdService {
     return await this.model.getPendingAdRequests();
   }
 
-  async getExternalAds(admin: Context['Admin'], status?: string) {
+  async getExternalAds(admin: Context['Admin'], status?: "Active" | "Expired" | "Inactive") {
     if (!admin) {
       throw new GraphQLError('Admin access required', {
         extensions: { code: 'FORBIDDEN' }
@@ -239,31 +239,72 @@ export class AdService {
     }
     return await this.model.getRevenueAnalytics(startDate, endDate);
   }
-
-  async createAdRequest(input: Partial<InferSelectModel<typeof servicesAds>>, vendor: Context['vendor']) {
-    if (!vendor) {
-      throw new GraphQLError('Vendor authentication required', {
-        extensions: { code: 'UNAUTHENTICATED' }
+  async createExternalAd(input: Partial<InferSelectModel<typeof externalAds>>, admin: Context['Admin']) {
+    if (!admin) {
+      throw new GraphQLError('Admin access required', {
+        extensions: { code: 'FORBIDDEN' }
       });
     }
 
-    const newAdRequest = {
+    // Check required fields
+    if (!input.adTitle) {
+      throw new GraphQLError('Ad title is required', {
+        extensions: { code: 'BAD_REQUEST' }
+      });
+    }
+
+    if (!input.redirectUrl) {
+      throw new GraphQLError('Redirect URL is required', {
+        extensions: { code: 'BAD_REQUEST' }
+      });
+    }
+
+    if (!input.price) {
+      throw new GraphQLError('Price is required', {
+        extensions: { code: 'BAD_REQUEST' }
+      });
+    }
+
+    if (!input.advertiserName) {
+      throw new GraphQLError('Advertiser name is required', {
+        extensions: { code: 'BAD_REQUEST' }
+      });
+    }
+
+    if (!input.advertiserEmail) {
+      throw new GraphQLError('Advertiser email is required', {
+        extensions: { code: 'BAD_REQUEST' }
+      });
+    }
+
+    if (!input.imageUrl) {
+      throw new GraphQLError('Image URL is required', {
+        extensions: { code: 'BAD_REQUEST' }
+      });
+    }
+
+    const newExternalAd = {
       id: uuidv4(),
-      vendorId: vendor.id,
       ...input,
-      status: 'Pending' as const,
+      adTitle: input.adTitle, // Ensure adTitle is explicitly set as a string
+      redirectUrl: input.redirectUrl, // Ensure redirectUrl is explicitly set
+      price: input.price, // Ensure price is explicitly set
+      advertiserName: input.advertiserName, // Ensure advertiserName is explicitly set as a string
+      advertiserEmail: input.advertiserEmail, // Ensure advertiserEmail is explicitly set
+      imageUrl: input.imageUrl, // Ensure imageUrl is explicitly set
+      advertiserPhone: input.advertiserPhone || null, // Can be null according to schema
+      adDescription: input.adDescription ?? null, // Explicitly handle undefined to null
+      status: input.status || 'Active' as const,
       impressionCount: 0,
       clickCount: 0,
-      conversionCount: 0,
       startDate: input.startDate ? new Date(input.startDate) : null,
       endDate: input.endDate ? new Date(input.endDate) : null,
       createdAt: new Date(),
       updatedAt: new Date()
     };
 
-    return await this.model.createAdRequest(newAdRequest);
+    return await this.model.createExternalAd(newExternalAd);
   }
-
   async updateAdRequest(id: string, input: Partial<InferSelectModel<typeof servicesAds>>, vendor: Context['vendor']) {
     if (!vendor) {
       throw new GraphQLError('Vendor authentication required', {
@@ -599,28 +640,6 @@ export class AdService {
     });
   }
 
-  async createExternalAd(input: Partial<InferSelectModel<typeof externalAds>>, admin: Context['Admin']) {
-    if (!admin) {
-      throw new GraphQLError('Admin access required', {
-        extensions: { code: 'FORBIDDEN' }
-      });
-    }
-
-    const newExternalAd = {
-      id: uuidv4(),
-      ...input,
-      status: input.status || 'Active' as const,
-      impressionCount: 0,
-      clickCount: 0,
-      startDate: input.startDate ? new Date(input.startDate) : null,
-      endDate: input.endDate ? new Date(input.endDate) : null,
-      createdAt: new Date(),
-      updatedAt: new Date()
-    };
-
-    return await this.model.createExternalAd(newExternalAd);
-  }
-
   async updateExternalAd(id: string, input: Partial<InferSelectModel<typeof externalAds>>, admin: Context['Admin']) {
     if (!admin) {
       throw new GraphQLError('Admin access required', {
@@ -689,8 +708,13 @@ export class AdService {
     const newPayment = {
       id: uuidv4(),
       vendorId,
-      ...input,
-      paymentStatus: 'Paid' as const,
+      adId: input.adId || null,
+      externalAdId: input.externalAdId || null,
+      amountPaid: input.amountPaid || '0',
+      paymentMethod: input.paymentMethod || null,
+      transactionId: input.transactionId || null,
+      paymentStatus: 'Pending' as const,
+      invoiceNumber: input.invoiceNumber || `INV-${Date.now()}`, // Add the missing required property
       paidAt: new Date(),
       createdAt: new Date(),
       updatedAt: new Date()
@@ -699,7 +723,7 @@ export class AdService {
     return await this.model.createPayment(newPayment);
   }
 
-  async updatePaymentStatus(id: string, status: string, admin: Context['Admin']) {
+  async updatePaymentStatus(id: string, status: "Pending" | "Paid" | "Failed" | "Refunded", admin: Context['Admin']) {
     if (!admin) {
       throw new GraphQLError('Admin access required', {
         extensions: { code: 'FORBIDDEN' }

@@ -1,3 +1,4 @@
+import { adTypeDefs } from "../../Features/Advertisment/GraphQL/TypeDefs";
 import { AdminTypeDefs } from "../../Features/Auth/Admin/GraphQL/TypeDefs";
 import { UserTypeDefs } from "../../Features/Auth/User/GraphQL/TypeDefs";
 import { VendorTypeDefs } from "../../Features/Auth/Vendor/GraphQL/TypeDefs";
@@ -11,6 +12,7 @@ import { farmhouseTypeDefs } from "../../Features/Services/FarmHouse/GraphQL/Typ
 import { customPhotographyTypeDefs } from "../../Features/Services/Photography/Custom/GraphQL/TypeDefs";
 import { photographyTypeDefs } from "../../Features/Services/Photography/Package/GraphQL/TypeDefs";
 import { venueTypeDefs } from "../../Features/Services/Venue/GraphQL/TypeDefs";
+import { supportTypeDefs } from "../../Features/Support/GraphQL/TypeDefs";
 
 
 export const typeDefs = [
@@ -27,4 +29,7 @@ export const typeDefs = [
   posTypeDefs,
   reviewTypeDefs,
   blogTypeDefs,
+  adTypeDefs,
+  supportTypeDefs,
+  
 ];

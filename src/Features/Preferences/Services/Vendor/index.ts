@@ -1,27 +1,25 @@
-import { eq } from 'drizzle-orm';
 import { DrizzleDB } from '../../../../Config/db';
-import { vendorPreferences } from '../../../../Schema';
 import { VendorPreference, VendorPreferenceInput } from '../../Types';
+import { VendorPreferenceModel } from '../../Model/Vendor';
 import { v4 as uuidv4 } from 'uuid';
 
 export class VendorPreferenceService {
   private db: DrizzleDB;
+  private vendorPreferenceModel: VendorPreferenceModel;
 
   constructor(db: DrizzleDB) {
     this.db = db;
+    this.vendorPreferenceModel = new VendorPreferenceModel();
   }
 
   // Get vendor preferences (create default if doesn't exist)
   async getVendorPreferences(vendorId: string): Promise<VendorPreference> {
     try {
-      let preferences = await this.db.select()
-        .from(vendorPreferences)
-        .where(eq(vendorPreferences.vendorId, vendorId))
-        .limit(1);
+      let preferences = await this.vendorPreferenceModel.findByVendorId(this.db, vendorId);
 
-      if (preferences.length === 0) {
+      if (!preferences) {
         // Create default preferences
-        const defaultPrefs = {
+        const defaultPrefs: VendorPreference = {
           id: uuidv4(),
           vendorId,
           pushNotifications: true,
@@ -35,11 +33,10 @@ export class VendorPreferenceService {
           updatedAt: new Date(),
         };
 
-        await this.db.insert(vendorPreferences).values(defaultPrefs);
-        return defaultPrefs;
+        preferences = await this.vendorPreferenceModel.create(this.db, defaultPrefs);
       }
 
-      return preferences[0] as VendorPreference;
+      return preferences;
     } catch (error) {
       console.error('Error getting vendor preferences:', error);
       throw new Error('Failed to get vendor preferences');
@@ -67,9 +64,7 @@ export class VendorPreferenceService {
         updatedAt: new Date(),
       };
 
-      await this.db.update(vendorPreferences)
-        .set(updateData)
-        .where(eq(vendorPreferences.vendorId, vendorId));
+      await this.vendorPreferenceModel.update(this.db, vendorId, updateData);
 
       return await this.getVendorPreferences(vendorId);
     } catch (error) {

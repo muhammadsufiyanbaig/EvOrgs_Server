@@ -1,8 +1,8 @@
-// src/Features/Vouchers/Resolvers/index.ts
+// src/Features/Vouchers/Resolvers/VoucherResolvers.ts
+import { GraphQLError } from 'graphql';
+import { VoucherService } from '../../Service';
+import { VoucherModel } from '../../Model';
 import { Context } from '../../../../GraphQL/Context';
-import { vouchers, voucherUsage, users } from '../../../../Schema';
-import { eq, and, or, gte, lte, sql, desc, asc } from 'drizzle-orm';
-import { v4 as uuidv4 } from 'uuid';
 import {
     CreateVoucherInput,
     UpdateVoucherInput,
@@ -12,752 +12,494 @@ import {
     VoucherUsageFilters,
     Voucher,
     VoucherUsage,
-    VoucherValidationResult,
-    DiscountType,
-    ServiceType,
-    ApplicableFor
+    VoucherValidationResult
 } from '../../Types';
 
-import { GraphQLError } from 'graphql';
-
-// Helper function to calculate discount
-const calculateDiscount = (
-    discountType: DiscountType,
-    discountValue: number,
-    orderAmount: number,
-    maxDiscountAmount?: number
-): number => {
-    let discount = 0;
-    
-    if (discountType === 'Percentage') {
-        discount = (orderAmount * discountValue) / 100;
-    } else {
-        discount = discountValue;
-    }
-    
-    // Apply max discount limit if specified
-    if (maxDiscountAmount && discount > maxDiscountAmount) {
-        discount = maxDiscountAmount;
-    }
-    
-    return Math.min(discount, orderAmount); // Discount cannot exceed order amount
+// Helper function to check if user is admin
+const isAdmin = (context: Context): boolean => {
+    return !!context.Admin;
 };
 
-// Helper function to check voucher eligibility
-const checkVoucherEligibility = async (
-    voucher: any,
-    serviceType: ServiceType,
-    serviceId: string,
-    orderAmount: number,
-    userId?: string,
-    db?: any
-): Promise<{ isValid: boolean; error?: string }> => {
-    const now = new Date();
-    
-    // Check if voucher is active
-    if (!voucher.isActive) {
-        return { isValid: false, error: 'Voucher is not active' };
-    }
-    
-    // Check validity dates
-    if (now < new Date(voucher.validFrom) || now > new Date(voucher.validUntil)) {
-        return { isValid: false, error: 'Voucher is expired or not yet valid' };
-    }
-    
-    // Check minimum order value
-    if (voucher.minOrderValue && orderAmount < voucher.minOrderValue) {
-        return { isValid: false, error: `Minimum order value of ${voucher.minOrderValue} required` };
-    }
-    
-    // Check service applicability
-    if (voucher.applicableFor === 'Specific Services') {
-        const isServiceTypeApplicable = voucher.serviceTypes?.includes(serviceType);
-        const isSpecificServiceApplicable = voucher.specificServiceIds?.includes(serviceId);
-        
-        if (!isServiceTypeApplicable && !isSpecificServiceApplicable) {
-            return { isValid: false, error: 'Voucher is not applicable for this service' };
-        }
-    }
-    
-    // Check total usage limit
-    if (voucher.totalUsageLimit && voucher.currentUsageCount >= voucher.totalUsageLimit) {
-        return { isValid: false, error: 'Voucher usage limit exceeded' };
-    }
-    
-    // Check per-user usage limit
-    if (userId && db) {
-        const userUsageCount = await db.select({ count: sql<number>`count(*)` })
-            .from(voucherUsage)
-            .where(and(
-                eq(voucherUsage.voucherId, voucher.id),
-                eq(voucherUsage.userId, userId)
-            ));
-        
-        if (userUsageCount[0]?.count >= voucher.usagePerUser) {
-            return { isValid: false, error: 'You have reached the usage limit for this voucher' };
-        }
-    }
-    
-    return { isValid: true };
+// Helper function to get vendor ID from context
+const getVendorId = (context: Context): string | undefined => {
+    return context.vendor?.id;
 };
 
-// Note: Function to notify about voucher events
-// This could be implemented using a message queue, webhook system, or direct database polling
-const notifyVoucherEvent = async (eventType: string, data: any) => {
-    // Implement your preferred notification method here
-    // Examples:
-    // - Send to a message queue (Redis, RabbitMQ, Kafka)
-    // - Store in a notifications table for polling
-    // - Trigger webhooks to registered endpoints
-    // - Use server-sent events (SSE)
+// Helper function to get user ID from context
+const getUserId = (context: Context): string | undefined => {
+    return context.user?.id;
+};
+
+// Helper function to require authentication
+const requireAuth = (context: Context, allowedTypes: ('user' | 'vendor' | 'admin')[] = ['user', 'vendor', 'admin']) => {
+    const hasUser = allowedTypes.includes('user') && context.user;
+    const hasVendor = allowedTypes.includes('vendor') && context.vendor;
+    const hasAdmin = allowedTypes.includes('admin') && context.Admin;
     
-    console.log(`Event: ${eventType}`, data);
-    
-    // Example webhook implementation:
-    // const webhookEndpoints = await getWebhooksForVendor(data.vendorId);
-    // webhookEndpoints.forEach(endpoint => {
-    //   axios.post(endpoint, { eventType, data }).catch(err => console.error('Webhook error:', err));
-    // });
+    if (!hasUser && !hasVendor && !hasAdmin) {
+        throw new GraphQLError('Authentication required', { 
+            extensions: { code: 'UNAUTHENTICATED' } 
+        });
+    }
+};
+
+// Helper function to require vendor or admin access
+const requireVendorOrAdmin = (context: Context) => {
+    if (!context.vendor && !context.Admin) {
+        throw new GraphQLError('Vendor or Admin access required', { 
+            extensions: { code: 'FORBIDDEN' } 
+        });
+    }
+};
+
+// Map database enum values to GraphQL enum values
+const mapDiscountType = (dbValue: string) => {
+    switch (dbValue) {
+        case 'Percentage': return 'PERCENTAGE';
+        case 'Fixed Amount': return 'FIXED_AMOUNT';
+        default: return dbValue;
+    }
+};
+
+const mapApplicableFor = (dbValue: string) => {
+    switch (dbValue) {
+        case 'All Services': return 'ALL_SERVICES';
+        case 'Specific Services': return 'SPECIFIC_SERVICES';
+        default: return dbValue;
+    }
+};
+
+const mapServiceType = (dbValue: string) => {
+    return dbValue.toUpperCase();
 };
 
 export const voucherResolvers = {
     Query: {
-        // Query resolvers remain the same
+        // Get all vouchers with optional filters
         getVouchers: async (
-            _: any,
-            { filters }: { filters?: VoucherFilters },
-            { db, vendor, Admin }: Context
+            _: any, 
+            { filters }: { filters?: VoucherFilters }, 
+            context: Context
         ): Promise<Voucher[]> => {
-            // Build where conditions
-            const conditions = [];
+            requireVendorOrAdmin(context);
             
-            // Vendor can only see their vouchers, Admin can see all
-            if (vendor) {
-                conditions.push(eq(vouchers.vendorId, vendor.id));
-            } else if (Admin) {
-                // Admin can see all vouchers, optionally filter by vendorId
-                if (filters?.vendorId) {
-                    conditions.push(eq(vouchers.vendorId, filters.vendorId));
-                }
-            } else {
-                throw new GraphQLError('Unauthorized', { extensions: { code: 'UNAUTHORIZED' } });
-            }
+            const voucherModel = new VoucherModel(context.db);
+            const voucherService = new VoucherService(voucherModel);
             
-            if (filters?.isActive !== undefined) {
-                conditions.push(eq(vouchers.isActive, filters.isActive));
-            }
+            const vendorId = getVendorId(context);
             
-            if (filters?.couponCode) {
-                conditions.push(eq(vouchers.couponCode, filters.couponCode));
-            }
-            
-            if (filters?.validNow) {
-                const now = new Date();
-                conditions.push(
-                    and(
-                        lte(vouchers.validFrom, now),
-                        gte(vouchers.validUntil, now)
-                    )
-                );
-            }
-            
-            if (filters?.serviceType) {
-                conditions.push(
-                    or(
-                        eq(vouchers.applicableFor, 'All Services'),
-                        sql`${filters.serviceType} = ANY(${vouchers.serviceTypes})`
-                    )
-                );
-            }
-            
-            const result = await db.select()
-                .from(vouchers)
-                .where(and(...conditions))
-                .orderBy(desc(vouchers.createdAt));
-            
-            return result as unknown as Voucher[];
+            return await voucherService.getVouchers(
+                filters, 
+                vendorId, 
+                isAdmin(context)
+            );
         },
 
+        // Get single voucher by ID
         getVoucher: async (
-            _: any,
-            { id }: { id: string },
-            { db, vendor, Admin }: Context
+            _: any, 
+            { id }: { id: string }, 
+            context: Context
         ): Promise<Voucher | null> => {
-            const conditions = [eq(vouchers.id, id)];
+            requireVendorOrAdmin(context);
             
-            // Access control
-            if (vendor) {
-                conditions.push(eq(vouchers.vendorId, vendor.id));
-            } else if (!Admin) {
-                throw new GraphQLError('Unauthorized', { extensions: { code: 'UNAUTHORIZED' } });
-            }
+            const voucherModel = new VoucherModel(context.db);
+            const voucherService = new VoucherService(voucherModel);
             
-            const result = await db.select()
-                .from(vouchers)
-                .where(and(...conditions))
-                .limit(1);
+            const vendorId = getVendorId(context);
             
-            return result[0] as unknown as Voucher || null;
+            return await voucherService.getVoucher(
+                id, 
+                vendorId, 
+                isAdmin(context)
+            );
         },
 
+        // Get voucher by coupon code (public for validation)
         getVoucherByCouponCode: async (
-            _: any,
-            { couponCode, vendorId }: { couponCode: string; vendorId: string },
-            { db }: Context
+            _: any, 
+            { couponCode, vendorId }: { couponCode: string; vendorId: string }, 
+            context: Context
         ): Promise<Voucher | null> => {
-            const result = await db.select()
-                .from(vouchers)
-                .where(and(
-                    eq(vouchers.couponCode, couponCode),
-                    eq(vouchers.vendorId, vendorId)
-                ))
-                .limit(1);
+            const voucherModel = new VoucherModel(context.db);
+            const voucherService = new VoucherService(voucherModel);
             
-            return result[0] as unknown as Voucher || null;
+            return await voucherService.getVoucherByCouponCode(couponCode, vendorId);
         },
 
+        // Validate voucher without applying it
         validateVoucher: async (
-            _: any,
-            { input }: { input: ValidateVoucherInput },
-            { db, user }: Context
+            _: any, 
+            { input }: { input: ValidateVoucherInput }, 
+            context: Context
         ): Promise<VoucherValidationResult> => {
-            try {
-                // Find voucher
-                const voucherResult = await db.select()
-                    .from(vouchers)
-                    .where(and(
-                        eq(vouchers.couponCode, input.couponCode),
-                        eq(vouchers.vendorId, input.vendorId)
-                    ))
-                    .limit(1);
-                
-                if (voucherResult.length === 0) {
-                    return {
-                        isValid: false,
-                        error: 'Voucher not found'
-                    };
-                }
-                
-                const voucher = voucherResult[0];
-                
-                // Check eligibility
-                const eligibility = await checkVoucherEligibility(
-                    voucher,
-                    input.serviceType,
-                    input.serviceId,
-                    input.orderAmount,
-                    user?.id,
-                    db
-                );
-                
-                if (!eligibility.isValid) {
-                    return {
-                        isValid: false,
-                        error: eligibility.error
-                    };
-                }
-                
-                // Calculate discount
-                const discountAmount = calculateDiscount(
-                    voucher.discountType as DiscountType,
-                    Number(voucher.discountValue),
-                    input.orderAmount,
-                    voucher.maxDiscountAmount ? Number(voucher.maxDiscountAmount) : undefined
-                );
-                
-                const finalAmount = input.orderAmount - discountAmount;
-                
-                return {
-                    isValid: true,
-                    voucher: voucher as unknown as Voucher,
-                    discountAmount,
-                    finalAmount
-                };
-            } catch (error) {
-                console.error('Error validating voucher:', error);
-                return {
-                    isValid: false,
-                    error: 'Failed to validate voucher'
-                };
-            }
+            const voucherModel = new VoucherModel(context.db);
+            const voucherService = new VoucherService(voucherModel);
+            
+            const userId = getUserId(context);
+            
+            return await voucherService.validateVoucher(input, userId);
         },
 
+        // Get voucher usage records
         getVoucherUsage: async (
-            _: any,
-            { filters }: { filters?: VoucherUsageFilters },
-            { db, vendor, Admin }: Context
+            _: any, 
+            { filters }: { filters?: VoucherUsageFilters }, 
+            context: Context
         ): Promise<VoucherUsage[]> => {
-            const conditions = [];
+            requireVendorOrAdmin(context);
             
-            if (filters?.voucherId) {
-                conditions.push(eq(voucherUsage.voucherId, filters.voucherId));
-            }
+            const voucherModel = new VoucherModel(context.db);
+            const voucherService = new VoucherService(voucherModel);
             
-            if (filters?.userId) {
-                conditions.push(eq(voucherUsage.userId, filters.userId));
-            }
+            const vendorId = getVendorId(context);
             
-            if (filters?.serviceType) {
-                conditions.push(eq(voucherUsage.serviceType, filters.serviceType));
-            }
-            
-            if (filters?.dateFrom) {
-                conditions.push(gte(voucherUsage.appliedAt, new Date(filters.dateFrom)));
-            }
-            
-            if (filters?.dateTo) {
-                conditions.push(lte(voucherUsage.appliedAt, new Date(filters.dateTo)));
-            }
-            
-            // Vendor can only see usage for their vouchers
-            if (vendor) {
-                const vendorVouchers = await db.select({ id: vouchers.id })
-                    .from(vouchers)
-                    .where(eq(vouchers.vendorId, vendor.id));
-                
-                const vendorVoucherIds = vendorVouchers.map(v => v.id);
-                if (vendorVoucherIds.length === 0) {
-                    return [];
-                }
-                
-                conditions.push(sql`${voucherUsage.voucherId} = ANY(${vendorVoucherIds})`);
-            } else if (!Admin) {
-                throw new GraphQLError('Unauthorized', { extensions: { code: 'UNAUTHORIZED' } });
-            }
-            
-            const result = await db.select()
-                .from(voucherUsage)
-                .where(and(...conditions))
-                .orderBy(desc(voucherUsage.appliedAt));
-            
-            return result as unknown as VoucherUsage[];
+            return await voucherService.getVoucherUsage(
+                filters, 
+                vendorId, 
+                isAdmin(context)
+            );
         },
 
+        // Get user's voucher usage history
         getUserVoucherUsage: async (
-            _: any,
-            { voucherId }: { voucherId?: string },
-            { db, user }: Context
+            _: any, 
+            { voucherId }: { voucherId?: string }, 
+            context: Context
         ): Promise<VoucherUsage[]> => {
-            if (!user) {
-                throw new GraphQLError('Authentication required', { extensions: { code: 'UNAUTHENTICATED' } });
+            requireAuth(context, ['user']);
+            
+            const userId = getUserId(context);
+            if (!userId) {
+                throw new GraphQLError('User authentication required', { 
+                    extensions: { code: 'UNAUTHENTICATED' } 
+                });
             }
             
-            const conditions = [eq(voucherUsage.userId, user.id)];
+            const voucherModel = new VoucherModel(context.db);
+            const voucherService = new VoucherService(voucherModel);
             
-            if (voucherId) {
-                conditions.push(eq(voucherUsage.voucherId, voucherId));
-            }
-            
-            const result = await db.select()
-                .from(voucherUsage)
-                .where(and(...conditions))
-                .orderBy(desc(voucherUsage.appliedAt));
-            
-            return result as unknown as VoucherUsage[];
+            return await voucherService.getUserVoucherUsage(userId, voucherId);
         },
 
+        // Get voucher statistics
         getVoucherStatistics: async (
-            _: any,
-            { vendorId, dateFrom, dateTo }: { vendorId?: string; dateFrom?: string; dateTo?: string },
-            { db, vendor, Admin }: Context
-        ) => {
-            const targetVendorId = vendorId || vendor?.id;
+            _: any, 
+            { vendorId, dateFrom, dateTo }: { 
+                vendorId?: string; 
+                dateFrom?: string; 
+                dateTo?: string; 
+            }, 
+            context: Context
+        ): Promise<any> => {
+            requireVendorOrAdmin(context);
             
-            if (!targetVendorId && !Admin) {
-                throw new GraphQLError('Vendor ID required', { extensions: { code: 'BAD_USER_INPUT' } });
-            }
+            const voucherModel = new VoucherModel(context.db);
+            const voucherService = new VoucherService(voucherModel);
             
-            // Vendor can only see their own stats
-            if (vendor && targetVendorId !== vendor.id) {
-                throw new GraphQLError('Unauthorized', { extensions: { code: 'UNAUTHORIZED' } });
-            }
+            // If not admin, use vendor's own ID
+            const targetVendorId = isAdmin(context) ? vendorId : getVendorId(context);
             
-            const conditions = [];
-            if (targetVendorId) {
-                conditions.push(eq(vouchers.vendorId, targetVendorId));
-            }
-            
-            // Get total vouchers count
-            const totalVouchersResult = await db.select({ count: sql<number>`count(*)` })
-                .from(vouchers)
-                .where(and(...conditions));
-            
-            // Get active vouchers count
-            const activeVouchersResult = await db.select({ count: sql<number>`count(*)` })
-                .from(vouchers)
-                .where(and(...conditions, eq(vouchers.isActive, true)));
-            
-            // Get usage statistics
-            const usageConditions = [...conditions];
-            if (dateFrom) {
-                usageConditions.push(gte(voucherUsage.appliedAt, new Date(dateFrom)));
-            }
-            if (dateTo) {
-                usageConditions.push(lte(voucherUsage.appliedAt, new Date(dateTo)));
-            }
-            
-            const usageStatsQuery = db.select({
-                totalUsage: sql<number>`count(*)`,
-                totalDiscountGiven: sql<number>`sum(${voucherUsage.discountAmount})`
-            })
-                .from(voucherUsage)
-                .innerJoin(vouchers, eq(voucherUsage.voucherId, vouchers.id))
-                .where(and(...usageConditions));
-            
-            const usageStats = await usageStatsQuery;
-            
+            const stats = await voucherService.getVoucherStatistics(
+                targetVendorId, 
+                dateFrom, 
+                dateTo, 
+                isAdmin(context)
+            );
+
+            // Add empty topPerformingVouchers array as defined in schema
             return {
-                totalVouchers: totalVouchersResult[0].count || 0,
-                activeVouchers: activeVouchersResult[0].count || 0,
-                totalUsage: usageStats[0]?.totalUsage || 0,
-                totalDiscountGiven: usageStats[0]?.totalDiscountGiven || 0,
-                topPerformingVouchers: [] // Could be implemented separately
+                ...stats,
+                topPerformingVouchers: [] // This could be implemented with additional queries
             };
         }
     },
 
     Mutation: {
+        // Create new voucher
         createVoucher: async (
-            _: any,
-            { input }: { input: CreateVoucherInput },
-            { db, vendor }: Context
+            _: any, 
+            { input }: { input: CreateVoucherInput }, 
+            context: Context
         ): Promise<Voucher> => {
-            if (!vendor) {
-                throw new GraphQLError('Vendor authentication required', { extensions: { code: 'UNAUTHENTICATED' } });
-            }
+            requireAuth(context, ['vendor']);
             
-            // Check for duplicate coupon code
-            const existingVoucher = await db.select()
-                .from(vouchers)
-                .where(and(
-                    eq(vouchers.vendorId, vendor.id),
-                    eq(vouchers.couponCode, input.couponCode)
-                ))
-                .limit(1);
-            
-            if (existingVoucher.length > 0) {
-                throw new GraphQLError('Coupon code already exists for this vendor', { extensions: { code: 'BAD_USER_INPUT' } });
-            }
-            
-            // Validate dates
-            if (new Date(input.validFrom) >= new Date(input.validUntil)) {
-                throw new GraphQLError('Valid from date must be before valid until date', { extensions: { code: 'BAD_USER_INPUT' } });
-            }
-            
-            const newVoucher = {
-                id: uuidv4(),
-                vendorId: vendor.id,
-                ...input,
-                discountValue: String(input.discountValue),
-                maxDiscountAmount: input.maxDiscountAmount ? String(input.maxDiscountAmount) : undefined,
-                minOrderValue: input.minOrderValue ? String(input.minOrderValue) : undefined,
-                usagePerUser: input.usagePerUser || 1,
-                currentUsageCount: 0,
-                isActive: true,
-                createdAt: new Date(),
-                updatedAt: new Date()
-            };
-            
-            const result = await db.insert(vouchers).values(newVoucher).returning();
-            
-            // Notify about the voucher creation
-            await notifyVoucherEvent('VOUCHER_CREATED', {
-                voucher: result[0],
-                vendorId: vendor.id
-            });
-            
-            return result[0] as unknown as Voucher;
-        },
-
-        updateVoucher: async (
-            _: any,
-            { input }: { input: UpdateVoucherInput },
-            { db, vendor }: Context
-        ): Promise<Voucher> => {
-            if (!vendor) {
-                throw new GraphQLError('Vendor authentication required', { extensions: { code: 'UNAUTHENTICATED' } });
-            }
-            
-            // Check ownership
-            const existingVoucher = await db.select()
-                .from(vouchers)
-                .where(and(
-                    eq(vouchers.id, input.id),
-                    eq(vouchers.vendorId, vendor.id)
-                ))
-                .limit(1);
-            
-            if (existingVoucher.length === 0) {
-                throw new GraphQLError('Voucher not found or access denied', { extensions: { code: 'NOT_FOUND' } });
-            }
-            
-            // Check for duplicate coupon code if updating
-            if (input.couponCode && input.couponCode !== existingVoucher[0].couponCode) {
-                const duplicateCheck = await db.select()
-                    .from(vouchers)
-                    .where(and(
-                        eq(vouchers.vendorId, vendor.id),
-                        eq(vouchers.couponCode, input.couponCode)
-                    ))
-                    .limit(1);
-                
-                if (duplicateCheck.length > 0) {
-                    throw new GraphQLError('Coupon code already exists for this vendor', { extensions: { code: 'BAD_USER_INPUT' } });
-                }
-            }
-            
-            // Validate dates if updating
-            const validFrom = input.validFrom ? new Date(input.validFrom) : new Date(existingVoucher[0].validFrom);
-            const validUntil = input.validUntil ? new Date(input.validUntil) : new Date(existingVoucher[0].validUntil);
-            
-            if (validFrom >= validUntil) {
-                throw new GraphQLError('Valid from date must be before valid until date', { extensions: { code: 'BAD_USER_INPUT' } });
-            }
-            
-            const updateData = {
-                ...input,
-                discountValue: input.discountValue !== undefined ? String(input.discountValue) : undefined,
-                maxDiscountAmount: input.maxDiscountAmount !== undefined ? String(input.maxDiscountAmount) : undefined,
-                minOrderValue: input.minOrderValue !== undefined ? String(input.minOrderValue) : undefined,
-                updatedAt: new Date()
-            };
-            
-            // Remove undefined values
-            Object.keys(updateData).forEach(key => {
-                if (updateData[key as keyof typeof updateData] === undefined) {
-                    delete updateData[key as keyof typeof updateData];
-                }
-            });
-            
-            const result = await db.update(vouchers)
-                .set(updateData)
-                .where(eq(vouchers.id, input.id))
-                .returning();
-            
-            // Notify about the voucher update
-            await notifyVoucherEvent('VOUCHER_UPDATED', {
-                voucher: result[0],
-                vendorId: vendor.id
-            });
-            
-            return result[0] as unknown as Voucher;
-        },
-
-        deleteVoucher: async (
-            _: any,
-            { id }: { id: string },
-            { db, vendor }: Context
-        ): Promise<boolean> => {
-            if (!vendor) {
-                throw new GraphQLError('Vendor authentication required', { extensions: { code: 'UNAUTHENTICATED' } });
-            }
-            
-            // Check ownership and if voucher has been used
-            const voucherWithUsage = await db.select({
-                voucher: vouchers,
-                usageCount: sql<number>`count(${voucherUsage.id})`
-            })
-                .from(vouchers)
-                .leftJoin(voucherUsage, eq(vouchers.id, voucherUsage.voucherId))
-                .where(and(
-                    eq(vouchers.id, id),
-                    eq(vouchers.vendorId, vendor.id)
-                ))
-                .groupBy(vouchers.id)
-                .limit(1);
-            
-            if (voucherWithUsage.length === 0) {
-                throw new GraphQLError('Voucher not found or access denied', { extensions: { code: 'NOT_FOUND' } });
-            }
-            
-            if (voucherWithUsage[0].usageCount > 0) {
-                throw new GraphQLError('Cannot delete voucher that has been used', { extensions: { code: 'BAD_USER_INPUT' } });
-            }
-            
-            await db.delete(vouchers).where(eq(vouchers.id, id));
-            
-            // Notify about the voucher deletion
-            await notifyVoucherEvent('VOUCHER_DELETED', {
-                voucherId: id,
-                vendorId: vendor.id
-            });
-            
-            return true;
-        },
-
-        toggleVoucherStatus: async (
-            _: any,
-            { id }: { id: string },
-            { db, vendor }: Context
-        ): Promise<Voucher> => {
-            if (!vendor) {
-                throw new GraphQLError('Vendor authentication required', { extensions: { code: 'UNAUTHENTICATED' } });
-            }
-            
-            // Check ownership
-            const existingVoucher = await db.select()
-                .from(vouchers)
-                .where(and(
-                    eq(vouchers.id, id),
-                    eq(vouchers.vendorId, vendor.id)
-                ))
-                .limit(1);
-            
-            if (existingVoucher.length === 0) {
-                throw new GraphQLError('Voucher not found or access denied', { extensions: { code: 'NOT_FOUND' } });
-            }
-            
-            const result = await db.update(vouchers)
-                .set({ 
-                    isActive: !existingVoucher[0].isActive,
-                    updatedAt: new Date()
-                })
-                .where(eq(vouchers.id, id))
-                .returning();
-            
-            // Notify about the voucher status update
-            await notifyVoucherEvent('VOUCHER_UPDATED', {
-                voucher: result[0],
-                vendorId: vendor.id
-            });
-            
-            return result[0] as unknown as Voucher;
-        },
-
-        applyVoucher: async (
-            _: any,
-            { input }: { input: ApplyVoucherInput },
-            { db, user }: Context
-        ): Promise<VoucherUsage> => {
-            if (!user) {
-                throw new GraphQLError('User authentication required', { extensions: { code: 'UNAUTHENTICATED' } });
-            }
-            
-            // Start transaction
-            return await db.transaction(async (tx) => {
-                // Find and lock voucher
-                const voucherResult = await tx.select()
-                    .from(vouchers)
-                    .where(and(
-                        eq(vouchers.couponCode, input.couponCode),
-                        eq(vouchers.vendorId, input.vendorId)
-                    ))
-                    .limit(1);
-                
-                if (voucherResult.length === 0) {
-                    throw new GraphQLError('Voucher not found', { extensions: { code: 'NOT_FOUND' } });
-                }
-                
-                const voucher = voucherResult[0];
-                
-                // Check eligibility
-                const eligibility = await checkVoucherEligibility(
-                    voucher,
-                    input.serviceType,
-                    input.serviceId,
-                    input.originalAmount,
-                    user.id,
-                    tx
-                );
-                
-                if (!eligibility.isValid) {
-                    throw new GraphQLError(eligibility.error || 'Voucher is not valid', { extensions: { code: 'BAD_USER_INPUT' } });
-                }
-                
-                // Calculate discount
-                const discountAmount = calculateDiscount(
-                    voucher.discountType as DiscountType,
-                    Number(voucher.discountValue),
-                    input.originalAmount,
-                    voucher.maxDiscountAmount ? Number(voucher.maxDiscountAmount) : undefined
-                );
-                
-                const finalAmount = input.originalAmount - discountAmount;
-                
-                // Create usage record
-                const usageRecord = {
-                    id: uuidv4(),
-                    voucherId: voucher.id,
-                    userId: user.id,
-                    bookingId: input.bookingId,
-                    originalAmount: String(input.originalAmount), // Convert to string
-                    discountAmount: String(discountAmount), // Convert to string
-                    finalAmount: String(finalAmount), // Convert to string
-                    serviceType: input.serviceType,
-                    serviceId: input.serviceId,
-                    appliedAt: new Date()
-                };
-                
-                const usageResult = await tx.insert(voucherUsage).values(usageRecord).returning();
-                
-                // Update voucher usage count
-                await tx.update(vouchers)
-                    .set({ 
-                        currentUsageCount: sql`${vouchers.currentUsageCount} + 1`,
-                        updatedAt: new Date()
-                    })
-                    .where(eq(vouchers.id, voucher.id));
-                
-                // Notify about the voucher usage
-                await notifyVoucherEvent('VOUCHER_USED', {
-                    voucherUsage: usageResult[0],
-                    vendorId: input.vendorId
+            const vendorId = getVendorId(context);
+            if (!vendorId) {
+                throw new GraphQLError('Vendor authentication required', { 
+                    extensions: { code: 'UNAUTHENTICATED' } 
                 });
-                
-                return usageResult[0] as unknown as VoucherUsage;
-            });
+            }
+            
+            const voucherModel = new VoucherModel(context.db);
+            const voucherService = new VoucherService(voucherModel);
+            
+            return await voucherService.createVoucher(input, vendorId);
         },
 
-        deactivateVoucher: async (
-            _: any,
-            { id }: { id: string },
-            { db, Admin }: Context
+        // Update existing voucher
+        updateVoucher: async (
+            _: any, 
+            { input }: { input: UpdateVoucherInput }, 
+            context: Context
         ): Promise<Voucher> => {
-            if (!Admin) {
-                throw new GraphQLError('Admin authentication required', { extensions: { code: 'UNAUTHENTICATED' } });
+            requireAuth(context, ['vendor']);
+            
+            const vendorId = getVendorId(context);
+            if (!vendorId) {
+                throw new GraphQLError('Vendor authentication required', { 
+                    extensions: { code: 'UNAUTHENTICATED' } 
+                });
             }
             
-            const result = await db.update(vouchers)
-                .set({ 
-                    isActive: false,
-                    updatedAt: new Date()
-                })
-                .where(eq(vouchers.id, id))
-                .returning();
+            const voucherModel = new VoucherModel(context.db);
+            const voucherService = new VoucherService(voucherModel);
             
-            if (result.length === 0) {
-                throw new GraphQLError('Voucher not found', { extensions: { code: 'NOT_FOUND' } });
+            return await voucherService.updateVoucher(input, vendorId);
+        },
+
+        // Delete voucher
+        deleteVoucher: async (
+            _: any, 
+            { id }: { id: string }, 
+            context: Context
+        ): Promise<boolean> => {
+            requireAuth(context, ['vendor']);
+            
+            const vendorId = getVendorId(context);
+            if (!vendorId) {
+                throw new GraphQLError('Vendor authentication required', { 
+                    extensions: { code: 'UNAUTHENTICATED' } 
+                });
             }
             
-            // Notify about the voucher deactivation
-            await notifyVoucherEvent('VOUCHER_UPDATED', {
-                voucher: result[0]
-            });
+            const voucherModel = new VoucherModel(context.db);
+            const voucherService = new VoucherService(voucherModel);
             
-            return result[0] as unknown as Voucher;
+            return await voucherService.deleteVoucher(id, vendorId);
+        },
+
+        // Toggle voucher active status
+        toggleVoucherStatus: async (
+            _: any, 
+            { id }: { id: string }, 
+            context: Context
+        ): Promise<Voucher> => {
+            requireAuth(context, ['vendor']);
+            
+            const vendorId = getVendorId(context);
+            if (!vendorId) {
+                throw new GraphQLError('Vendor authentication required', { 
+                    extensions: { code: 'UNAUTHENTICATED' } 
+                });
+            }
+            
+            const voucherModel = new VoucherModel(context.db);
+            const voucherService = new VoucherService(voucherModel);
+            
+            return await voucherService.toggleVoucherStatus(id, vendorId);
+        },
+
+        // Apply voucher to a booking/order
+        applyVoucher: async (
+            _: any, 
+            { input }: { input: ApplyVoucherInput }, 
+            context: Context
+        ): Promise<VoucherUsage> => {
+            requireAuth(context, ['user']);
+            
+            const userId = getUserId(context);
+            if (!userId) {
+                throw new GraphQLError('User authentication required', { 
+                    extensions: { code: 'UNAUTHENTICATED' } 
+                });
+            }
+            
+            const voucherModel = new VoucherModel(context.db);
+            const voucherService = new VoucherService(voucherModel);
+            
+            return await voucherService.applyVoucher(input, userId);
+        },
+
+        // Admin-only: Deactivate voucher
+        deactivateVoucher: async (
+            _: any, 
+            { id }: { id: string }, 
+            context: Context
+        ): Promise<Voucher> => {
+            requireAuth(context, ['admin']);
+            
+            const voucherModel = new VoucherModel(context.db);
+            const voucherService = new VoucherService(voucherModel);
+            
+            return await voucherService.deactivateVoucher(id);
         }
     },
 
-    // Field resolvers
-    VoucherUsage: {
-        voucher: async (parent: any, _: any, { db }: Context) => {
-            const result = await db.select()
-                .from(vouchers)
-                .where(eq(vouchers.id, parent.voucherId))
-                .limit(1);
-            
-            return result[0] as unknown as Voucher || null;
+    // Subscription resolvers for real-time updates
+    Subscription: {
+        voucherUsed: {
+            // This would typically use a pub/sub system like Redis or GraphQL subscriptions
+            subscribe: async function* (
+                _: any,
+                { vendorId }: { vendorId: string },
+                context: Context
+            ) {
+                requireVendorOrAdmin(context);
+                
+                // Implementation would depend on your pub/sub setup
+                // Example with async generator:
+                // const pubsub = context.pubsub;
+                // const channel = `VOUCHER_USED_${vendorId}`;
+                // return pubsub.asyncIterator(channel);
+                
+                // Placeholder implementation
+                yield { voucherUsed: null };
+            }
         },
 
-        user: async (parent: any, _: any, { db }: Context) => {
-            const result = await db.select()
-                .from(users)
-                .where(eq(users.id, parent.userId))
-                .limit(1);
-            
-            return result[0] || null;
+        voucherCreated: {
+            subscribe: async function* (
+                _: any,
+                { vendorId }: { vendorId: string },
+                context: Context
+            ) {
+                requireVendorOrAdmin(context);
+                // Similar implementation as above
+                yield { voucherCreated: null };
+            }
+        },
+
+        voucherUpdated: {
+            subscribe: async function* (
+                _: any,
+                { vendorId }: { vendorId: string },
+                context: Context
+            ) {
+                requireVendorOrAdmin(context);
+                // Similar implementation as above
+                yield { voucherUpdated: null };
+            }
         }
+    },
+
+    // Field resolvers for nested data and type transformations
+    Voucher: {
+        // Convert string amounts back to numbers for GraphQL response
+        discountValue: (parent: Voucher) => {
+            return parseFloat(parent.discountValue.toString());
+        },
+        
+        maxDiscountAmount: (parent: Voucher) => {
+            return parent.maxDiscountAmount ? parseFloat(parent.maxDiscountAmount.toString()) : null;
+        },
+        
+        minOrderValue: (parent: Voucher) => {
+            return parent.minOrderValue ? parseFloat(parent.minOrderValue.toString()) : null;
+        },
+
+        // Map database enum values to GraphQL enum values
+        discountType: (parent: Voucher) => {
+            return mapDiscountType(parent.discountType);
+        },
+
+        applicableFor: (parent: Voucher) => {
+            return mapApplicableFor(parent.applicableFor);
+        },
+
+        serviceTypes: (parent: Voucher) => {
+            return parent.serviceTypes?.map(mapServiceType) || [];
+        }
+    },
+
+    VoucherUsage: {
+        // Convert string amounts back to numbers
+        originalAmount: (parent: VoucherUsage) => {
+            return parseFloat(parent.originalAmount.toString());
+        },
+
+        discountAmount: (parent: VoucherUsage) => {
+            return parseFloat(parent.discountAmount.toString());
+        },
+
+        finalAmount: (parent: VoucherUsage) => {
+            return parseFloat(parent.finalAmount.toString());
+        },
+
+        serviceType: (parent: VoucherUsage) => {
+            return mapServiceType(parent.serviceType);
+        },
+
+        // Resolve voucher details for usage record
+        voucher: async (
+            parent: VoucherUsage, 
+            _: any, 
+            context: Context
+        ): Promise<Voucher | null> => {
+            const voucherModel = new VoucherModel(context.db);
+            const voucherService = new VoucherService(voucherModel);
+            
+            return await voucherService.getVoucherForUsage(parent.voucherId);
+        },
+
+        // Resolve user details for usage record
+        user: async (
+            parent: VoucherUsage, 
+            _: any, 
+            context: Context
+        ): Promise<any> => {
+            // Only allow vendors/admins to see user details, or the user themselves
+            const currentUserId = getUserId(context);
+            const isAuthorized = isAdmin(context) || 
+                                context.vendor || 
+                                (currentUserId && currentUserId === parent.userId);
+            
+            if (!isAuthorized) {
+                return null; // Don't expose user details to unauthorized users
+            }
+            
+            const voucherModel = new VoucherModel(context.db);
+            const voucherService = new VoucherService(voucherModel);
+            
+            return await voucherService.getUserForUsage(parent.userId);
+        }
+    },
+
+    VoucherValidationResult: {
+        // Convert amounts to numbers if voucher validation is successful
+        discountAmount: (parent: VoucherValidationResult) => {
+            return parent.discountAmount || null;
+        },
+
+        finalAmount: (parent: VoucherValidationResult) => {
+            return parent.finalAmount || null;
+        }
+    },
+
+    VoucherStatistics: {
+        // Ensure numeric fields are properly typed
+        totalVouchers: (parent: any) => parent.totalVouchers || 0,
+        activeVouchers: (parent: any) => parent.activeVouchers || 0,
+        totalUsage: (parent: any) => parent.totalUsage || 0,
+        totalDiscountGiven: (parent: any) => parseFloat(parent.totalDiscountGiven) || 0,
+        topPerformingVouchers: (parent: any) => parent.topPerformingVouchers || []
+    },
+
+    // Enum resolvers to ensure proper mapping
+    DiscountType: {
+        PERCENTAGE: 'Percentage',
+        FIXED_AMOUNT: 'Fixed Amount'
+    },
+
+    ApplicableFor: {
+        ALL_SERVICES: 'All Services',
+        SPECIFIC_SERVICES: 'Specific Services'
+    },
+
+    ServiceType: {
+        FARMHOUSE: 'farmhouse',
+        VENUE: 'venue',
+        CATERING: 'catering',
+        PHOTOGRAPHY: 'photography'
     }
-    
-    // Subscription section removed and replaced with the notification system above
 };

@@ -14,7 +14,6 @@ import { customPhotographyResolver } from "../../Features/Services/Photography/C
 import { photographyResolvers } from "../../Features/Services/Photography/Package/GraphQL/Resolvers";
 import { venueResolver } from "../../Features/Services/Venue/GraphQL/Resolvers";
 import { supportResolvers } from "../../Features/Support/GraphQL/Resolver";
-import { voucherResolvers } from "../../Features/Voucher/GraphQL/Resolver";
 import { dateScalar } from "./Scalar";
 
 
@@ -38,7 +37,6 @@ export const resolvers = {
     ...adResolvers.Query,
     ...supportResolvers.Query,
     ...settingsResolvers.Query,
-    ...voucherResolvers.Query,
 
   },
   Mutation: {
@@ -58,7 +56,5 @@ export const resolvers = {
     ...adResolvers.Mutation,
     ...supportResolvers.Mutation,
     ...settingsResolvers.Mutation,
-    ...voucherResolvers.Mutation,
-    
   },
 };

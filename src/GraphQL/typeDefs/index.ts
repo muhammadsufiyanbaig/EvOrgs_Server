@@ -14,6 +14,7 @@ import { customPhotographyTypeDefs } from "../../Features/Services/Photography/C
 import { photographyTypeDefs } from "../../Features/Services/Photography/Package/GraphQL/TypeDefs";
 import { venueTypeDefs } from "../../Features/Services/Venue/GraphQL/TypeDefs";
 import { supportTypeDefs } from "../../Features/Support/GraphQL/TypeDefs";
+import { voucherTypeDefs } from "../../Features/Voucher/GraphQL/TypeDefs";
 
 
 export const typeDefs = [
@@ -32,5 +33,7 @@ export const typeDefs = [
   blogTypeDefs,
   adTypeDefs,
   supportTypeDefs,
-  settingsTypeDefs
+  settingsTypeDefs,
+  voucherTypeDefs,
+  
 ];

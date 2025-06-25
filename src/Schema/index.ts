@@ -1,4 +1,4 @@
-import { pgTable, uuid, varchar, text, timestamp, integer, boolean, decimal, check, date } from "drizzle-orm/pg-core";
+import { pgTable, uuid, varchar, text, timestamp, integer, boolean, decimal, check, date, unique } from "drizzle-orm/pg-core";
 import { sql } from "drizzle-orm";
 
 /**
@@ -671,44 +671,63 @@ export const supportResponses = pgTable("support_responses", {
     updatedAt: timestamp("updated_at").defaultNow(),
 });
 
-/* ===================== COUPON MANAGEMENT ===================== */
+/* ===================== VOUCHER/COUPON MANAGEMENT SYSTEM ===================== */
 
-// COUPON CODES TABLE
-export const couponCodes = pgTable("coupon_codes", {
+// MAIN VOUCHERS TABLE
+export const vouchers = pgTable("vouchers", {
     id: uuid("id").primaryKey(),
-    // Coupon basics
-    code: varchar("code", { length: 50 }).unique().notNull(),
-    description: text("description").notNull(),
-    discountType: varchar("discount_type", { length: 20 }).notNull().$type<"Percentage" | "FixedAmount">(),
+    vendorId: uuid("vendor_id").references(() => vendors.id, { onDelete: "cascade" }).notNull(),
+    
+    // Basic info
+    couponCode: varchar("coupon_code", { length: 50 }).notNull(),
+    title: varchar("title", { length: 255 }).notNull(),
+    description: text("description"),
+    
+    // Discount config
+    discountType: varchar("discount_type", { length: 20 }).notNull().$type<"Percentage" | "Fixed Amount">(),
     discountValue: decimal("discount_value", { precision: 10, scale: 2 }).notNull(),
-    // Coupon validity
-    startDate: timestamp("start_date").notNull(),
-    endDate: timestamp("end_date").notNull(),
-    isActive: boolean("is_active").default(true),
+    maxDiscountAmount: decimal("max_discount_amount", { precision: 10, scale: 2 }),
+    minOrderValue: decimal("min_order_value", { precision: 10, scale: 2 }),
+    
+    // Service targeting
+    applicableFor: varchar("applicable_for", { length: 20 }).notNull().$type<"All Services" | "Specific Services">(),
+    serviceTypes: varchar("service_types", { length: 50 }).array(), // ["FarmHouse", "Venue", "Catering", "Photography"]
+    specificServiceIds: uuid("specific_service_ids").array(),
+    
     // Usage limits
-    maxUsage: integer("max_usage"),
-    currentUsage: integer("current_usage").default(0),
-    maxUsagePerVendor: integer("max_usage_per_vendor").default(1),
-    // Restrictions
-    minPurchaseAmount: decimal("min_purchase_amount", { precision: 10, scale: 2 }),
-    adTypes: varchar("ad_types", { length: 20 }).array().$type<Array<"Featured" | "Sponsored" >>(),
-    // Metadata
-    createdBy: uuid("created_by").references(() => admin.id, { onDelete: "set null" }).notNull(),
+    totalUsageLimit: integer("total_usage_limit"),
+    usagePerUser: integer("usage_per_user").default(1),
+    currentUsageCount: integer("current_usage_count").default(0),
+    
+    // Validity
+    validFrom: timestamp("valid_from").notNull(),
+    validUntil: timestamp("valid_until").notNull(),
+    isActive: boolean("is_active").default(true),
+    
     createdAt: timestamp("created_at").defaultNow(),
     updatedAt: timestamp("updated_at").defaultNow(),
+}, (table) => {
+    return {
+        uniqueCouponCode: unique("unique_vendor_coupon").on(table.vendorId, table.couponCode),
+        discountValueCheck: check("discount_value_check", sql`${table.discountValue} > 0`),
+        validDateCheck: check("valid_date_check", sql`${table.validFrom} < ${table.validUntil}`),
+    };
 });
 
-// COUPON USAGE TABLE
-export const couponUsage = pgTable("coupon_usage", {
+// VOUCHER USAGE TRACKING
+export const voucherUsage = pgTable("voucher_usage", {
     id: uuid("id").primaryKey(),
-    // Relations
-    couponId: uuid("coupon_id").references(() => couponCodes.id, { onDelete: "cascade" }).notNull(),
-    vendorId: uuid("vendor_id").references(() => vendors.id, { onDelete: "cascade" }).notNull(),
-    adPaymentId: uuid("ad_payment_id").references(() => adPayments.id, { onDelete: "cascade" }).notNull(),
-    // Usage details
-    discountAmount: decimal("discount_amount", { precision: 10, scale: 2 }).notNull(),
+    voucherId: uuid("voucher_id").references(() => vouchers.id, { onDelete: "cascade" }).notNull(),
+    userId: uuid("user_id").references(() => users.id, { onDelete: "cascade" }).notNull(),
+    bookingId: uuid("booking_id").references(() => bookings.id, { onDelete: "cascade" }).notNull(),
+    
     originalAmount: decimal("original_amount", { precision: 10, scale: 2 }).notNull(),
+    discountAmount: decimal("discount_amount", { precision: 10, scale: 2 }).notNull(),
     finalAmount: decimal("final_amount", { precision: 10, scale: 2 }).notNull(),
-    // Metadata
-    usedAt: timestamp("used_at").defaultNow(),
+    
+    serviceType: varchar("service_type", { length: 50 }).notNull().$type<"FarmHouse" | "Venue" | "Catering" | "Photography">(),
+    serviceId: uuid("service_id").notNull(),
+    
+    appliedAt: timestamp("applied_at").defaultNow(),
 });
+

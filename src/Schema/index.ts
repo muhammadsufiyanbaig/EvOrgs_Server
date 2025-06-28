@@ -1,4 +1,4 @@
-import { pgTable, uuid, varchar, text, timestamp, integer, boolean, decimal, check, date, unique } from "drizzle-orm/pg-core";
+import { pgTable, uuid, varchar, text, timestamp, integer, boolean, decimal, check, date, unique, jsonb } from "drizzle-orm/pg-core";
 import { sql } from "drizzle-orm";
 
 /**
@@ -554,21 +554,63 @@ export const adInquiries = pgTable("ad_inquiries", {
 
 /* ===================== NOTIFICATION MANAGEMENT ===================== */
 
-// NOTIFICATIONS TABLE
+// NOTIFICATIONS TABLE - Simplified version
 export const notifications = pgTable("notifications", {
     id: uuid("id").primaryKey(),
+    notificationType: varchar("notification_type", { length: 30 }).notNull()
+        .$type<"General" | "All Vendors" | "Vendor Personal" | "All Users" | "User Personal">(),
+    targetUserId: uuid("target_user_id").references(() => users.id, { onDelete: "cascade" }),
+    targetVendorId: uuid("target_vendor_id").references(() => vendors.id, { onDelete: "cascade" }),
+    title: varchar("title", { length: 255 }).notNull(),
+    message: text("message").notNull(),
+    category: varchar("category", { length: 50 }).notNull()
+        .$type<"Booking" | "Payment" | "System" | "Chat" | "Promotion">(),
+    linkTo: varchar("link_to", { length: 255 }),
+    relatedId: uuid("related_id"),
+    relatedType: varchar("related_type", { length: 50 })
+        .$type<"Booking" | "Payment" | "Chat" | "Review">(),
+    isActive: boolean("is_active").default(true),
+    priority: varchar("priority", { length: 30 }).notNull().default("medium")
+        .$type<"low" | "medium" | "high" | "urgent">(),
+    data: jsonb("data"),
+    scheduledAt: timestamp("scheduled_at"),
+    sentAt: timestamp("sent_at"),
+    totalRecipients: integer("total_recipients").default(0),
+    successfulSends: integer("successful_sends").default(0),
+    failedSends: integer("failed_sends").default(0),
+    createdBy: uuid("created_by").references(() => admin.id, { onDelete: "set null" }),
+    createdAt: timestamp("created_at").defaultNow().notNull(),
+    updatedAt: timestamp("updated_at").defaultNow().notNull(),
+}, (table) => {
+    return {
+        userPersonalCheck: check("user_personal_check",
+            sql`(${table.notificationType} = 'User Personal' AND ${table.targetUserId} IS NOT NULL) OR ${table.notificationType} != 'User Personal'`),
+        vendorPersonalCheck: check("vendor_personal_check",
+            sql`(${table.notificationType} = 'Vendor Personal' AND ${table.targetVendorId} IS NOT NULL) OR ${table.notificationType} != 'Vendor Personal'`),
+    };
+});
+// NOTIFICATION READ STATUS - Simple read tracking
+export const notificationReadStatus = pgTable("notification_read_status", {
+    id: uuid("id").primaryKey(),
+    notificationId: uuid("notification_id").references(() => notifications.id, { onDelete: "cascade" }).notNull(),
+    
+    // Who read it
     userId: uuid("user_id").references(() => users.id, { onDelete: "cascade" }),
     vendorId: uuid("vendor_id").references(() => vendors.id, { onDelete: "cascade" }),
     adminId: uuid("admin_id").references(() => admin.id, { onDelete: "cascade" }),
-    title: varchar("title", { length: 255 }).notNull(),
-    message: text("message").notNull(),
-    type: varchar("type", { length: 50 }).notNull().$type<"Booking" | "Payment" | "Reminder" | "System" | "Chat" | "Promotion">(),
-    isRead: boolean("is_read").default(false),
-    linkTo: varchar("link_to", { length: 255 }),
-    relatedId: uuid("related_id"),
-    relatedType: varchar("related_type", { length: 50 }).$type<"Booking" | "Payment" | "Chat" | "Review" | "Blog" | "Advertisement">(),
-    createdAt: timestamp("created_at").defaultNow(),
-    readAt: timestamp("read_at"),
+    
+    // When read
+    readAt: timestamp("read_at").defaultNow(),
+}, (table) => {
+    return {
+        // Prevent duplicate read entries
+        uniqueRead: unique("unique_notification_read").on(
+            table.notificationId, 
+            table.userId, 
+            table.vendorId, 
+            table.adminId
+        ),
+    };
 });
 
 /* ===================== SETTINGS & PREFERENCES ===================== */

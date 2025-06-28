@@ -4,6 +4,7 @@ import { UserTypeDefs } from "../../Features/Auth/User/GraphQL/TypeDefs";
 import { VendorTypeDefs } from "../../Features/Auth/Vendor/GraphQL/TypeDefs";
 import { blogTypeDefs } from "../../Features/Blog/GraphQL/TypeDefs";
 import { BookingTypeDefs } from "../../Features/Booking/GraphQl/TypeDefs";
+import notificationTypeDefs from "../../Features/Notification/GraphQL/TypeDefs";
 import { posTypeDefs } from "../../Features/POS/GraphQL/TypeDefs";
 import { settingsTypeDefs } from "../../Features/Preferences/GraphQL/typeDefs";
 import { reviewTypeDefs } from "../../Features/Reviews/GraphQL/TypeDefs";
@@ -32,5 +33,6 @@ export const typeDefs = [
   blogTypeDefs,
   adTypeDefs,
   supportTypeDefs,
-  settingsTypeDefs
+  settingsTypeDefs,
+  notificationTypeDefs,
 ];

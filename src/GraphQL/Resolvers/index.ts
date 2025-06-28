@@ -4,6 +4,7 @@ import { userResolvers } from "../../Features/Auth/User/GraphQL/Resolver";
 import { VendorResolvers } from "../../Features/Auth/Vendor/GraphQL/Resolver";
 import { blogResolvers } from "../../Features/Blog/GraphQL/Resolver";
 import { BookingResolvers } from "../../Features/Booking/GraphQl/Resolver";
+import { notificationResolvers } from "../../Features/Notification/GraphQL/Resolver";
 import { posResolvers } from "../../Features/POS/GraphQL/Resolver";
 import { settingsResolvers } from "../../Features/Preferences/GraphQL/Resolver";
 import { reviewResolvers } from "../../Features/Reviews/GraphQL/Resolver";
@@ -37,6 +38,7 @@ export const resolvers = {
     ...adResolvers.Query,
     ...supportResolvers.Query,
     ...settingsResolvers.Query,
+    ...notificationResolvers.Query,
 
   },
   Mutation: {
@@ -56,5 +58,6 @@ export const resolvers = {
     ...adResolvers.Mutation,
     ...supportResolvers.Mutation,
     ...settingsResolvers.Mutation,
+    ...notificationResolvers.Mutation
   },
 };

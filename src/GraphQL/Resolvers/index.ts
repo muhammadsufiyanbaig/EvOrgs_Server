@@ -1,4 +1,5 @@
 import { adResolvers } from "../../Features/Advertisment/GraphQL/Resolver";
+import { analyticsResolvers } from "../../Features/Analytics/GraphQL/Resolver";
 import { adminResolver } from "../../Features/Auth/Admin/GraphQL/Resolver";
 import { userResolvers } from "../../Features/Auth/User/GraphQL/Resolver";
 import { VendorResolvers } from "../../Features/Auth/Vendor/GraphQL/Resolver";
@@ -39,6 +40,8 @@ export const resolvers = {
     ...supportResolvers.Query,
     ...settingsResolvers.Query,
     ...notificationResolvers.Query,
+    ...analyticsResolvers.Query,
+
 
   },
   Mutation: {
@@ -58,6 +61,8 @@ export const resolvers = {
     ...adResolvers.Mutation,
     ...supportResolvers.Mutation,
     ...settingsResolvers.Mutation,
-    ...notificationResolvers.Mutation
+    ...notificationResolvers.Mutation,
+    ...analyticsResolvers.Mutation,
+    
   },
 };

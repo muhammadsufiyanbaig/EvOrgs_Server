@@ -1,4 +1,5 @@
 import { adTypeDefs } from "../../Features/Advertisment/GraphQL/TypeDefs";
+import { analyticsTypeDefs } from "../../Features/Analytics/GraphQL/TypeDefs";
 import { AdminTypeDefs } from "../../Features/Auth/Admin/GraphQL/TypeDefs";
 import { UserTypeDefs } from "../../Features/Auth/User/GraphQL/TypeDefs";
 import { VendorTypeDefs } from "../../Features/Auth/Vendor/GraphQL/TypeDefs";
@@ -35,4 +36,5 @@ export const typeDefs = [
   supportTypeDefs,
   settingsTypeDefs,
   notificationTypeDefs,
+  analyticsTypeDefs,
 ];

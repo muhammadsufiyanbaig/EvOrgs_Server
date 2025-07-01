@@ -8,13 +8,18 @@ import { typeDefs } from "./GraphQL/typeDefs"; // Adjust the path as needed
 import { resolvers } from "./GraphQL/Resolvers"; // Adjust the path as needed
 import { authMiddleware } from "./middleware/auth"; // Import your auth middleware
 import { Context, createContext } from "./GraphQL/Context";
+import { createServer } from "http";
+import { initializeChatSocket } from "./Features/Chats/Socket";
 
 
 dotenv.config();
 
 async function startServer() {
   const app = express();
+  const httpServer = createServer(app);
 
+  // Initialize Socket.IO for chat
+  initializeChatSocket(httpServer);
   // Middleware
   app.use(cors());
   app.use(bodyParser.json());

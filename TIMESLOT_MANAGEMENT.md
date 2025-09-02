@@ -2,7 +2,7 @@
 
 ## Overview
 
-The Advertisement Time Slot Management System is a comprehensive solution that allows administrators to allocate specific time slots to vendor advertisements and automatically execute them using cron jobs. This system provides granular control over when advertisements are displayed, ensuring optimal ad placement and revenue optimization.
+The Advertisement Time Slot Management System is a comprehensive solution that allows administrators to allocate specific time slots to vendor advertisements and execute them on-demand. This system provides granular control over when advertisements are displayed, ensuring optimal ad placement and revenue optimization.
 
 ## Features
 
@@ -12,11 +12,11 @@ The Advertisement Time Slot Management System is a comprehensive solution that a
 - **Priority System**: Set priority levels (1-5) for time slot conflicts
 - **Availability Checking**: Real-time availability verification before scheduling
 
-### 🤖 Automated Execution
-- **Cron Job Integration**: Automated ad execution using node-cron
+### 🤖 On-Demand Execution
+- **Manual Execution**: Execute ads on-demand via API endpoints
 - **Retry Logic**: Automatic retry mechanism for failed executions
 - **Execution Logging**: Detailed logs of all ad executions
-- **Cleanup Jobs**: Automatic cleanup of old execution logs
+- **Cleanup Jobs**: Manual cleanup of old execution logs
 
 ### 📊 Schedule Management
 - **Real-time Monitoring**: Live dashboard for upcoming and failed schedules
@@ -237,30 +237,17 @@ console.log(`Scheduled ${bulkResult.data.bulkScheduleAds.length} ad runs`);
 
 ## Service Classes
 
-### AdSchedulerService
+### Ad Execution Service
 
-The core service responsible for automated ad execution:
+The core service responsible for on-demand ad execution:
 
 ```typescript
-class AdSchedulerService {
+class AdExecutionService {
   constructor(database: DrizzleClient) {
     this.db = database;
-    this.jobs = new Map();
   }
 
-  start(): void {
-    // Main cron job runs every minute
-    this.mainJob = cron.schedule('* * * * *', () => {
-      this.processScheduledAds();
-    });
-
-    // Cleanup job runs every hour
-    this.cleanupJob = cron.schedule('0 * * * *', () => {
-      this.cleanupOldLogs();
-    });
-  }
-
-  async processScheduledAds(): Promise<void> {
+  async executeScheduledAds(): Promise<void> {
     // Process all scheduled ads for current time
     const now = new Date();
     const schedules = await this.getSchedulesForExecution(now);
@@ -269,11 +256,19 @@ class AdSchedulerService {
       await this.executeAd(schedule);
     }
   }
+
+  async executeAdOnDemand(scheduleId: string): Promise<void> {
+    // Execute a specific scheduled ad immediately
+    const schedule = await this.getScheduleById(scheduleId);
+    if (schedule) {
+      await this.executeAd(schedule);
+    }
+  }
 }
 ```
 
 ### Key Features:
-- **Minute-by-minute Processing**: Checks for scheduled ads every minute
+- **On-Demand Processing**: Execute ads when triggered via API
 - **Retry Logic**: Automatically retries failed executions
 - **Error Handling**: Comprehensive error logging and reporting
 - **Performance Monitoring**: Tracks execution times and success rates
@@ -377,42 +372,32 @@ POST   /api/schedules/:id/retry         # Retry failed schedule
 
 ### Common Issues
 
-1. **Cron Job Not Running**
-   - Check if AdSchedulerService is initialized in server.ts
-   - Verify node-cron dependency is installed
-   - Check server logs for cron-related errors
+1. **Ad Execution Failures**
+   - Check database connectivity
+   - Verify ad schedule configuration
+   - Review execution logs
 
-2. **Schedule Conflicts**
-   - Use availability checking before scheduling
-   - Implement priority-based conflict resolution
-   - Consider overlapping time slot warnings
+2. **Performance Issues**
+   - Monitor execution times in logs
+   - Check database query performance
+   - Verify resource availability
 
-3. **High Failure Rates**
-   - Review execution logs for common errors
-   - Check database connection stability
-   - Monitor system resource usage
+3. **Execution Delays**
+   - Ensure proper API triggering
+   - Check system resource allocation
+   - Monitor execution queue status
 
-### Debug Queries
+### Debugging Commands
 
-```sql
--- Check schedule status distribution
-SELECT status, COUNT(*) FROM "adSchedules" GROUP BY status;
+```bash
+# Check execution logs
+tail -f logs/ad-execution.log
 
--- Find frequently failing ads
-SELECT "adId", COUNT(*) as failure_count 
-FROM "adSchedules" 
-WHERE status = 'Failed' 
-GROUP BY "adId" 
-ORDER BY failure_count DESC;
+# Monitor database performance
+npm run db:analyze
 
--- Check execution performance
-SELECT DATE("scheduledDate"), 
-       COUNT(*) as total_schedules,
-       SUM(CASE WHEN status = 'Completed' THEN 1 ELSE 0 END) as successful
-FROM "adSchedules" 
-WHERE "scheduledDate" >= CURRENT_DATE - INTERVAL '7 days'
-GROUP BY DATE("scheduledDate")
-ORDER BY DATE("scheduledDate");
+# Test ad execution manually
+npm run test:ad-execution
 ```
 
 ## Future Enhancements

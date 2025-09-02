@@ -24,7 +24,6 @@ const auth_1 = require("./middleware/auth"); // Import your auth middleware
 const Context_1 = require("./GraphQL/Context");
 const http_1 = require("http");
 const Socket_1 = require("./Features/Chats/Socket");
-const AdSchedulerService_1 = require("./Features/Advertisment/Services/AdSchedulerService");
 const db_1 = require("./Config/db");
 dotenv_1.default.config();
 function startServer() {
@@ -33,10 +32,6 @@ function startServer() {
         const httpServer = (0, http_1.createServer)(app);
         // Initialize Socket.IO for chat
         (0, Socket_1.initializeChatSocket)(httpServer);
-        // Initialize Ad Scheduler Service for automated ad execution
-        const adScheduler = new AdSchedulerService_1.AdSchedulerService(db_1.db);
-        adScheduler.start();
-        console.log('🕒 Ad Scheduler Service started');
         // Middleware
         app.use((0, cors_1.default)());
         app.use(body_parser_1.default.json());

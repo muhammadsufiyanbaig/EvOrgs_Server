@@ -140,6 +140,78 @@ export const BookingResolvers = {
                 throw new UserInputError(error.message);
             }
         },
+
+        // Get vendor visiting requests (vendor only)
+        vendorVisitingRequests: async (_: any, { filters }: { filters: BookingFiltersInput }, context: Context) => {
+            if (!context.vendor) {
+                throw new AuthenticationError('You must be logged in as a vendor to view visiting requests');
+            }
+
+            try {
+                // Validate filters
+                validateBookingFiltersInput(filters);
+
+                const bookingModel = new BookingModel(context.db);
+                const bookingService = new BookingService(bookingModel);
+                return await bookingService.getVendorVisitingRequests(context.vendor.id, filters);
+            } catch (error: any) {
+                throw new UserInputError(error.message);
+            }
+        },
+
+        // Get vendor scheduled visits (vendor only)
+        vendorScheduledVisits: async (_: any, { filters }: { filters: BookingFiltersInput }, context: Context) => {
+            if (!context.vendor) {
+                throw new AuthenticationError('You must be logged in as a vendor to view scheduled visits');
+            }
+
+            try {
+                // Validate filters
+                validateBookingFiltersInput(filters);
+
+                const bookingModel = new BookingModel(context.db);
+                const bookingService = new BookingService(bookingModel);
+                return await bookingService.getVendorScheduledVisits(context.vendor.id, filters);
+            } catch (error: any) {
+                throw new UserInputError(error.message);
+            }
+        },
+
+        // Get all visiting requests (admin only)
+        allVisitingRequests: async (_: any, { filters }: { filters: BookingFiltersInput }, context: Context) => {
+            if (!context.Admin) {
+                throw new ForbiddenError('Admin access required');
+            }
+
+            try {
+                // Validate filters
+                validateBookingFiltersInput(filters);
+
+                const bookingModel = new BookingModel(context.db);
+                const bookingService = new BookingService(bookingModel);
+                return await bookingService.getAllVisitingRequests(filters);
+            } catch (error: any) {
+                throw new UserInputError(error.message);
+            }
+        },
+
+        // Get all scheduled visits (admin only)
+        allScheduledVisits: async (_: any, { filters }: { filters: BookingFiltersInput }, context: Context) => {
+            if (!context.Admin) {
+                throw new ForbiddenError('Admin access required');
+            }
+
+            try {
+                // Validate filters
+                validateBookingFiltersInput(filters);
+
+                const bookingModel = new BookingModel(context.db);
+                const bookingService = new BookingService(bookingModel);
+                return await bookingService.getAllScheduledVisits(filters);
+            } catch (error: any) {
+                throw new UserInputError(error.message);
+            }
+        },
     },
 
     // Mutation resolvers

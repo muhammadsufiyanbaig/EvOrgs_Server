@@ -4,8 +4,10 @@ import { hashPassword, verifyPassword } from '../../../../utils/PasswordHashing'
 import { generateToken } from '../../../../Config/auth/JWT';
 import { VendorModel } from '../model';
 import { OtpService } from '../../../../utils/OTP';
-import { VendorApprovalInput, VendorChangePasswordInput, VendorLoginInput, VendorRegisterInput, VendorResendOtpInput, VendorResetPasswordInput, VendorSetNewPasswordInput, VendorUpdateProfileInput, VendorVerifyOtpInput } from '../Types';
+import { VendorApprovalInput, VendorChangePasswordInput, VendorLoginInput, VendorRegisterInput, VendorResendOtpInput, VendorResetPasswordInput, VendorSetNewPasswordInput, VendorUpdateProfileInput, VendorVerifyOtpInput, ListVendorsInput, VendorListResponse } from '../Types';
 import { Context } from '../../../../GraphQL/Context';
+import { UserModel } from '../../User/model';
+import { ListUsersInput, UserListResponse } from '../../User/Types';
 
 export class VendorService {
   async vendor(_: any, { id }: { id: string }, { db, user }: Context) {
@@ -342,5 +344,206 @@ export class VendorService {
     const updatedVendor = await vendorModel.updateVendorApproval(input);
 
     return updatedVendor;
+  }
+
+  // Vendor Management Methods - Allow vendors to manage other vendors and users
+  async vendorListAllVendors(_: any, { input }: { input?: ListVendorsInput }, context: Context): Promise<VendorListResponse> {
+    if (!context.vendor) {
+      throw new GraphQLError('Not authenticated: Vendor authentication required', {
+        extensions: { code: 'UNAUTHENTICATED' },
+      });
+    }
+
+    // Only approved vendors can access this feature
+    if (context.vendor.vendorStatus !== 'Approved') {
+      throw new GraphQLError('Unauthorized: Only approved vendors can access vendor management', {
+        extensions: { code: 'FORBIDDEN' },
+      });
+    }
+
+    const { page = 1, limit = 10, search, status, vendorType } = input || {};
+    const vendorModel = new VendorModel(context.db);
+
+    let result;
+    
+    if (search) {
+      result = await vendorModel.searchVendors(search, page, limit);
+    } else if (status) {
+      result = await vendorModel.getVendorsByStatus(status, page, limit);
+    } else if (vendorType) {
+      result = await vendorModel.getVendorsByType(vendorType, page, limit);
+    } else {
+      result = await vendorModel.getAllVendors(page, limit);
+    }
+
+    const totalPages = Math.ceil(result.total / limit);
+
+    return {
+      vendors: result.vendors,
+      total: result.total,
+      page,
+      limit,
+      totalPages
+    };
+  }
+
+  async vendorListAllUsers(_: any, { input }: { input?: ListUsersInput }, context: Context): Promise<UserListResponse> {
+    if (!context.vendor) {
+      throw new GraphQLError('Not authenticated: Vendor authentication required', {
+        extensions: { code: 'UNAUTHENTICATED' },
+      });
+    }
+
+    // Only approved vendors can access this feature
+    if (context.vendor.vendorStatus !== 'Approved') {
+      throw new GraphQLError('Unauthorized: Only approved vendors can access user management', {
+        extensions: { code: 'FORBIDDEN' },
+      });
+    }
+
+    const { page = 1, limit = 10, search } = input || {};
+    const userModel = new UserModel(context.db);
+
+    let result;
+    if (search) {
+      result = await userModel.searchUsers(search, page, limit);
+    } else {
+      result = await userModel.getAllUsers(page, limit);
+    }
+
+    const totalPages = Math.ceil(result.total / limit);
+
+    return {
+      users: result.users,
+      total: result.total,
+      page,
+      limit,
+      totalPages
+    };
+  }
+
+  async vendorUpdateVendorStatus(_: any, { input }: { input: { vendorId: string, status: "Pending" | "Approved" | "Rejected", message?: string } }, context: Context): Promise<boolean> {
+    if (!context.vendor) {
+      throw new GraphQLError('Not authenticated: Vendor authentication required', {
+        extensions: { code: 'UNAUTHENTICATED' },
+      });
+    }
+
+    // Only approved vendors can approve other vendors
+    if (context.vendor.vendorStatus !== 'Approved') {
+      throw new GraphQLError('Unauthorized: Only approved vendors can manage vendor status', {
+        extensions: { code: 'FORBIDDEN' },
+      });
+    }
+
+    // Vendors cannot change their own status
+    if (context.vendor.id === input.vendorId) {
+      throw new GraphQLError('Forbidden: Cannot change your own vendor status', {
+        extensions: { code: 'FORBIDDEN' },
+      });
+    }
+
+    const vendorModel = new VendorModel(context.db);
+    const targetVendor = await vendorModel.findVendorById(input.vendorId);
+    
+    if (!targetVendor) {
+      throw new GraphQLError('Vendor not found', {
+        extensions: { code: 'NOT_FOUND' },
+      });
+    }
+
+    await vendorModel.updateVendorApproval({
+      vendorId: input.vendorId,
+      status: input.status,
+      message: input.message
+    });
+
+    return true;
+  }
+
+  async vendorVerifyUser(_: any, { userId }: { userId: string }, context: Context): Promise<boolean> {
+    if (!context.vendor) {
+      throw new GraphQLError('Not authenticated: Vendor authentication required', {
+        extensions: { code: 'UNAUTHENTICATED' },
+      });
+    }
+
+    // Only approved vendors can verify users
+    if (context.vendor.vendorStatus !== 'Approved') {
+      throw new GraphQLError('Unauthorized: Only approved vendors can verify users', {
+        extensions: { code: 'FORBIDDEN' },
+      });
+    }
+
+    const userModel = new UserModel(context.db);
+    const user = await userModel.findById(userId);
+    
+    if (!user) {
+      throw new GraphQLError('User not found', {
+        extensions: { code: 'NOT_FOUND' },
+      });
+    }
+
+    // Check if user is already verified
+    if (user.isVerified) {
+      throw new GraphQLError('User is already verified', {
+        extensions: { code: 'BAD_USER_INPUT' },
+      });
+    }
+
+    await userModel.setVerified(userId);
+    return true;
+  }
+
+  async vendorGetVendorById(_: any, { vendorId }: { vendorId: string }, context: Context) {
+    if (!context.vendor) {
+      throw new GraphQLError('Not authenticated: Vendor authentication required', {
+        extensions: { code: 'UNAUTHENTICATED' },
+      });
+    }
+
+    // Only approved vendors can access vendor details
+    if (context.vendor.vendorStatus !== 'Approved') {
+      throw new GraphQLError('Unauthorized: Only approved vendors can access vendor details', {
+        extensions: { code: 'FORBIDDEN' },
+      });
+    }
+
+    const vendorModel = new VendorModel(context.db);
+    const vendor = await vendorModel.findVendorById(vendorId);
+    
+    if (!vendor) {
+      throw new GraphQLError('Vendor not found', {
+        extensions: { code: 'NOT_FOUND' },
+      });
+    }
+
+    return vendor;
+  }
+
+  async vendorGetUserById(_: any, { userId }: { userId: string }, context: Context) {
+    if (!context.vendor) {
+      throw new GraphQLError('Not authenticated: Vendor authentication required', {
+        extensions: { code: 'UNAUTHENTICATED' },
+      });
+    }
+
+    // Only approved vendors can access user details
+    if (context.vendor.vendorStatus !== 'Approved') {
+      throw new GraphQLError('Unauthorized: Only approved vendors can access user details', {
+        extensions: { code: 'FORBIDDEN' },
+      });
+    }
+
+    const userModel = new UserModel(context.db);
+    const user = await userModel.findById(userId);
+    
+    if (!user) {
+      throw new GraphQLError('User not found', {
+        extensions: { code: 'NOT_FOUND' },
+      });
+    }
+
+    return user;
   }
 }

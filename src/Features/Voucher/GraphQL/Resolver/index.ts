@@ -12,7 +12,13 @@ import {
     VoucherUsageFilters,
     Voucher,
     VoucherUsage,
-    VoucherValidationResult
+    VoucherValidationResult,
+    AdminVoucherFilters,
+    PaginationInput,
+    VoucherLimitOverride,
+    SystemPromotionInput,
+    TrendPeriod,
+    TrendGroupBy
 } from '../../Types';
 
 // Helper function to check if user is admin
@@ -197,22 +203,72 @@ export const voucherResolvers = {
             const voucherModel = new VoucherModel(context.db);
             const voucherService = new VoucherService(voucherModel);
             
-            // If not admin, use vendor's own ID
-            const targetVendorId = isAdmin(context) ? vendorId : getVendorId(context);
+            const currentVendorId = isAdmin(context) ? vendorId : getVendorId(context);
             
-            const stats = await voucherService.getVoucherStatistics(
-                targetVendorId, 
+            return await voucherService.getVoucherStatistics(
+                currentVendorId, 
                 dateFrom, 
                 dateTo, 
                 isAdmin(context)
             );
+        },
 
-            // Add empty topPerformingVouchers array as defined in schema
-            return {
-                ...stats,
-                topPerformingVouchers: [] // This could be implemented with additional queries
-            };
-        }
+        // ========== ADMIN-ONLY QUERIES ==========
+        
+        adminGetAllVouchers: async (
+            _: any,
+            { filters, pagination }: { 
+                filters?: AdminVoucherFilters; 
+                pagination?: PaginationInput; 
+            },
+            context: Context
+        ) => {
+            requireAuth(context, ['admin']);
+            
+            const voucherModel = new VoucherModel(context.db);
+            const voucherService = new VoucherService(voucherModel);
+            
+            return await voucherService.adminGetAllVouchers(filters, pagination);
+        },
+
+        adminGetVoucherAnalytics: async (
+            _: any,
+            { dateFrom, dateTo }: { dateFrom?: string; dateTo?: string; },
+            context: Context
+        ) => {
+            requireAuth(context, ['admin']);
+            
+            const voucherModel = new VoucherModel(context.db);
+            const voucherService = new VoucherService(voucherModel);
+            
+            return await voucherService.adminGetVoucherAnalytics(dateFrom, dateTo);
+        },
+     
+        adminGetExpiredVouchers: async (
+            _: any,
+            { daysOld }: { daysOld: number; },
+            context: Context
+        ) => {
+            requireAuth(context, ['admin']);
+            
+            const voucherModel = new VoucherModel(context.db);
+            const voucherService = new VoucherService(voucherModel);
+            
+            return await voucherService.adminGetExpiredVouchers(daysOld);
+        },
+
+        adminGetVoucherTrends: async (
+            _: any,
+            { period, groupBy }: { period: TrendPeriod; groupBy: TrendGroupBy; },
+            context: Context
+        ) => {
+            requireAuth(context, ['admin']);
+            
+            const voucherModel = new VoucherModel(context.db);
+            const voucherService = new VoucherService(voucherModel);
+            
+            return await voucherService.adminGetVoucherTrends(period, groupBy);
+        },
     },
 
     Mutation: {
@@ -333,7 +389,126 @@ export const voucherResolvers = {
             const voucherService = new VoucherService(voucherModel);
             
             return await voucherService.deactivateVoucher(id);
-        }
+        },
+
+        // ========== ADMIN-ONLY MUTATIONS ==========
+
+        adminCreateVoucher: async (
+            _: any,
+            { vendorId, input }: { vendorId: string; input: CreateVoucherInput; },
+            context: Context
+        ): Promise<Voucher> => {
+            requireAuth(context, ['admin']);
+            
+            const voucherModel = new VoucherModel(context.db);
+            const voucherService = new VoucherService(voucherModel);
+            
+            return await voucherService.adminCreateVoucher(vendorId, input);
+        },
+
+        adminUpdateVoucher: async (
+            _: any,
+            { input }: { input: UpdateVoucherInput; },
+            context: Context
+        ): Promise<Voucher> => {
+            requireAuth(context, ['admin']);
+            
+            const voucherModel = new VoucherModel(context.db);
+            const voucherService = new VoucherService(voucherModel);
+            
+            return await voucherService.adminUpdateVoucher(input);
+        },
+
+        adminForceDeleteVoucher: async (
+            _: any,
+            { id, reason }: { id: string; reason: string; },
+            context: Context
+        ): Promise<boolean> => {
+            requireAuth(context, ['admin']);
+            
+            const voucherModel = new VoucherModel(context.db);
+            const voucherService = new VoucherService(voucherModel);
+            
+            return await voucherService.adminForceDeleteVoucher(id, reason);
+        },
+
+        adminSuspendVendorVouchers: async (
+            _: any,
+            { vendorId, reason, duration }: { vendorId: string; reason: string; duration?: number; },
+            context: Context
+        ): Promise<boolean> => {
+            requireAuth(context, ['admin']);
+            
+            const voucherModel = new VoucherModel(context.db);
+            const voucherService = new VoucherService(voucherModel);
+            
+            return await voucherService.adminSuspendVendorVouchers(vendorId, reason, duration);
+        },
+
+        adminRestoreVendorVouchers: async (
+            _: any,
+            { vendorId }: { vendorId: string; },
+            context: Context
+        ): Promise<boolean> => {
+            requireAuth(context, ['admin']);
+            
+            const voucherModel = new VoucherModel(context.db);
+            const voucherService = new VoucherService(voucherModel);
+            
+            return await voucherService.adminRestoreVendorVouchers(vendorId);
+        },
+
+        adminOverrideVoucherLimits: async (
+            _: any,
+            { voucherId, newLimits }: { voucherId: string; newLimits: VoucherLimitOverride; },
+            context: Context
+        ): Promise<Voucher> => {
+            requireAuth(context, ['admin']);
+            
+            const voucherModel = new VoucherModel(context.db);
+            const voucherService = new VoucherService(voucherModel);
+            
+            return await voucherService.adminOverrideVoucherLimits(voucherId, newLimits);
+        },
+
+        adminCleanupExpiredVouchers: async (
+            _: any,
+            { daysOld }: { daysOld: number; },
+            context: Context
+        ): Promise<number> => {
+            requireAuth(context, ['admin']);
+            
+            const voucherModel = new VoucherModel(context.db);
+            const voucherService = new VoucherService(voucherModel);
+            
+            return await voucherService.adminCleanupExpiredVouchers(daysOld);
+        },
+
+        adminRecalculateVoucherStatistics: async (
+            _: any,
+            { vendorId }: { vendorId?: string; },
+            context: Context
+        ): Promise<boolean> => {
+            requireAuth(context, ['admin']);
+            
+            const voucherModel = new VoucherModel(context.db);
+            const voucherService = new VoucherService(voucherModel);
+            
+            return await voucherService.adminRecalculateVoucherStatistics(vendorId);
+        },
+
+        adminCreateSystemPromotion: async (
+            _: any,
+            { input }: { input: SystemPromotionInput; },
+            context: Context
+        ): Promise<Voucher[]> => {
+            requireAuth(context, ['admin']);
+            
+            const voucherModel = new VoucherModel(context.db);
+            const voucherService = new VoucherService(voucherModel);
+            
+            return await voucherService.adminCreateSystemPromotion(input);
+        },
     },
 
     // Subscription resolvers for real-time updates

@@ -2,7 +2,7 @@
 
 import { GraphQLError } from 'graphql';
 import { PhotographyModel } from '../model';
-import { CreatePhotographyPackageInput, UpdatePhotographyPackageInput, SearchPhotographyPackagesInput, InputValidator } from '../Types';
+import { CreatePhotographyPackageInput, UpdatePhotographyPackageInput, SearchPhotographyPackagesInput, InputValidator, AdminPackageFilters } from '../Types';
 import { DrizzleDB } from '../../../../../Config/db';
 
 export class PhotographyService {
@@ -169,5 +169,200 @@ export class PhotographyService {
       isAvailable: newAvailability,
       updatedAt: new Date()
     });
+  }
+
+  // ================ ADMIN METHODS ================
+
+  /**
+   * Admin: Get all packages with filtering and pagination
+   */
+  async getAllPackagesForAdmin(filters: AdminPackageFilters, admin: any) {
+    if (!admin) {
+      throw new GraphQLError('Admin authentication required', {
+        extensions: { code: 'UNAUTHORIZED' }
+      });
+    }
+
+    // Validate filters
+    const validation = InputValidator.validateAdminFilters(filters);
+    if (!validation.isValid) {
+      throw new GraphQLError('Invalid filter parameters', {
+        extensions: { code: 'BAD_USER_INPUT', validationErrors: validation.errors }
+      });
+    }
+
+    // Set defaults
+    const normalizedFilters = {
+      ...filters,
+      page: filters.page || 1,
+      limit: filters.limit || 20,
+      sortBy: filters.sortBy || 'created_desc'
+    };
+
+    return this.model.getAllPackagesForAdmin(normalizedFilters);
+  }
+
+  /**
+   * Admin: Get package statistics
+   */
+  async getPackageStatistics(admin: any) {
+    if (!admin) {
+      throw new GraphQLError('Admin authentication required', {
+        extensions: { code: 'UNAUTHORIZED' }
+      });
+    }
+
+    return this.model.getPackageStatistics();
+  }
+
+  /**
+   * Admin: Get package by ID with vendor details
+   */
+  async getPackageWithVendorById(id: string, admin: any) {
+    if (!admin) {
+      throw new GraphQLError('Admin authentication required', {
+        extensions: { code: 'UNAUTHORIZED' }
+      });
+    }
+
+    const photographyPackage = await this.model.getPackageWithVendorById(id);
+    
+    if (!photographyPackage) {
+      throw new GraphQLError('Photography package not found', {
+        extensions: { code: 'NOT_FOUND' }
+      });
+    }
+    
+    return photographyPackage;
+  }
+
+  /**
+   * Admin: Update package status
+   */
+  async updatePackageStatus(id: string, isAvailable: boolean, admin: any) {
+    if (!admin) {
+      throw new GraphQLError('Admin authentication required', {
+        extensions: { code: 'UNAUTHORIZED' }
+      });
+    }
+
+    const existingPackage = await this.model.getPackageById(id);
+    
+    if (!existingPackage) {
+      throw new GraphQLError('Photography package not found', {
+        extensions: { code: 'NOT_FOUND' }
+      });
+    }
+
+    return this.model.updatePackageStatus(id, isAvailable);
+  }
+
+  /**
+   * Admin: Delete package
+   */
+  async adminDeletePackage(id: string, admin: any) {
+    if (!admin) {
+      throw new GraphQLError('Admin authentication required', {
+        extensions: { code: 'UNAUTHORIZED' }
+      });
+    }
+
+    const existingPackage = await this.model.getPackageById(id);
+    
+    if (!existingPackage) {
+      throw new GraphQLError('Photography package not found', {
+        extensions: { code: 'NOT_FOUND' }
+      });
+    }
+
+    await this.model.adminDeletePackage(id);
+    
+    return {
+      success: true,
+      message: 'Photography package deleted successfully'
+    };
+  }
+
+  /**
+   * Admin: Get recent packages
+   */
+  async getRecentPackages(limit: number = 10, admin: any) {
+    if (!admin) {
+      throw new GraphQLError('Admin authentication required', {
+        extensions: { code: 'UNAUTHORIZED' }
+      });
+    }
+
+    const filters: AdminPackageFilters = {
+      page: 1,
+      limit,
+      sortBy: 'created_desc'
+    };
+
+    const result = await this.model.getAllPackagesForAdmin(filters);
+    return result.packages;
+  }
+
+  /**
+   * Admin: Get packages by availability status
+   */
+  async getPackagesByAvailability(isAvailable: boolean, admin: any) {
+    if (!admin) {
+      throw new GraphQLError('Admin authentication required', {
+        extensions: { code: 'UNAUTHORIZED' }
+      });
+    }
+
+    const filters: AdminPackageFilters = {
+      isAvailable,
+      page: 1,
+      limit: 50,
+      sortBy: 'created_desc'
+    };
+
+    const result = await this.model.getAllPackagesForAdmin(filters);
+    return result.packages;
+  }
+
+  /**
+   * Admin: Get high-value packages
+   */
+  async getHighValuePackages(minPrice: number = 5000, admin: any) {
+    if (!admin) {
+      throw new GraphQLError('Admin authentication required', {
+        extensions: { code: 'UNAUTHORIZED' }
+      });
+    }
+
+    const filters: AdminPackageFilters = {
+      minPrice,
+      page: 1,
+      limit: 50,
+      sortBy: 'price_desc'
+    };
+
+    const result = await this.model.getAllPackagesForAdmin(filters);
+    return result.packages;
+  }
+
+  /**
+   * Admin: Get packages by vendor
+   */
+  async getPackagesByVendor(vendorId: string, admin: any) {
+    if (!admin) {
+      throw new GraphQLError('Admin authentication required', {
+        extensions: { code: 'UNAUTHORIZED' }
+      });
+    }
+
+    const filters: AdminPackageFilters = {
+      vendorId,
+      page: 1,
+      limit: 100,
+      sortBy: 'created_desc'
+    };
+
+    const result = await this.model.getAllPackagesForAdmin(filters);
+    return result.packages;
   }
 }

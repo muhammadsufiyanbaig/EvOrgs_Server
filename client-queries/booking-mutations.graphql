@@ -1,0 +1,440 @@
+# ===================================
+# BOOKING MUTATIONS
+# ===================================
+
+# Create a new booking (user only)
+mutation CreateBooking($input: CreateBookingInput!) {
+  createBooking(input: $input) {
+    id
+    userId
+    vendorId
+    serviceType
+    serviceId
+    eventDate
+    eventTime
+    eventDuration
+    guestCount
+    specialRequests
+    totalAmount
+    advanceAmount
+    remainingAmount
+    paymentStatus
+    bookingStatus
+    visitStatus
+    visitRequestedAt
+    visitScheduledAt
+    visitCompletedAt
+    createdAt
+    updatedAt
+    service {
+      ... on PhotographyPackage {
+        id
+        packageName
+        price
+        duration
+        description
+        features
+      }
+      ... on CateringPackage {
+        id
+        packageName
+        pricePerPerson
+        minPersons
+        description
+        menuItems
+      }
+      ... on FarmHouse {
+        id
+        name
+        location
+        perNightPrice
+        amenities
+      }
+      ... on Venue {
+        id
+        name
+        location
+        capacity
+        pricePerHour
+        amenities
+      }
+    }
+    vendor {
+      id
+      businessName
+      email
+      phone
+      address
+    }
+  }
+}
+
+# Request a visit (user only)
+mutation RequestVisit($input: RequestVisitInput!) {
+  requestVisit(input: $input) {
+    id
+    userId
+    vendorId
+    serviceType
+    serviceId
+    eventDate
+    eventTime
+    eventDuration
+    guestCount
+    specialRequests
+    totalAmount
+    advanceAmount
+    remainingAmount
+    paymentStatus
+    bookingStatus
+    visitStatus
+    visitRequestedAt
+    visitScheduledAt
+    visitCompletedAt
+    createdAt
+    updatedAt
+    service {
+      ... on PhotographyPackage {
+        id
+        packageName
+        price
+        duration
+        description
+        features
+      }
+      ... on CateringPackage {
+        id
+        packageName
+        pricePerPerson
+        minPersons
+        description
+        menuItems
+      }
+      ... on FarmHouse {
+        id
+        name
+        location
+        perNightPrice
+        amenities
+      }
+      ... on Venue {
+        id
+        name
+        location
+        capacity
+        pricePerHour
+        amenities
+      }
+    }
+    vendor {
+      id
+      businessName
+      email
+      phone
+      address
+    }
+    user {
+      id
+      firstName
+      lastName
+      email
+      phone
+    }
+  }
+}
+
+# Schedule a visit (vendor/admin only)
+mutation ScheduleVisit($input: ScheduleVisitInput!) {
+  scheduleVisit(input: $input) {
+    id
+    userId
+    vendorId
+    serviceType
+    serviceId
+    eventDate
+    eventTime
+    eventDuration
+    guestCount
+    specialRequests
+    totalAmount
+    advanceAmount
+    remainingAmount
+    paymentStatus
+    bookingStatus
+    visitStatus
+    visitRequestedAt
+    visitScheduledAt
+    visitCompletedAt
+    createdAt
+    updatedAt
+    service {
+      ... on PhotographyPackage {
+        id
+        packageName
+        price
+        duration
+        description
+        features
+      }
+      ... on CateringPackage {
+        id
+        packageName
+        pricePerPerson
+        minPersons
+        description
+        menuItems
+      }
+      ... on FarmHouse {
+        id
+        name
+        location
+        perNightPrice
+        amenities
+      }
+      ... on Venue {
+        id
+        name
+        location
+        capacity
+        pricePerHour
+        amenities
+      }
+    }
+    vendor {
+      id
+      businessName
+      email
+      phone
+      address
+    }
+    user {
+      id
+      firstName
+      lastName
+      email
+      phone
+    }
+  }
+}
+
+# Complete a visit (vendor/admin only)
+mutation CompleteVisit($bookingId: ID!) {
+  completeVisit(bookingId: $bookingId) {
+    id
+    userId
+    vendorId
+    serviceType
+    serviceId
+    eventDate
+    eventTime
+    eventDuration
+    guestCount
+    specialRequests
+    totalAmount
+    advanceAmount
+    remainingAmount
+    paymentStatus
+    bookingStatus
+    visitStatus
+    visitRequestedAt
+    visitScheduledAt
+    visitCompletedAt
+    createdAt
+    updatedAt
+    service {
+      ... on PhotographyPackage {
+        id
+        packageName
+        price
+        duration
+        description
+        features
+      }
+      ... on CateringPackage {
+        id
+        packageName
+        pricePerPerson
+        minPersons
+        description
+        menuItems
+      }
+      ... on FarmHouse {
+        id
+        name
+        location
+        perNightPrice
+        amenities
+      }
+      ... on Venue {
+        id
+        name
+        location
+        capacity
+        pricePerHour
+        amenities
+      }
+    }
+    vendor {
+      id
+      businessName
+      email
+      phone
+      address
+    }
+    user {
+      id
+      firstName
+      lastName
+      email
+      phone
+    }
+  }
+}
+
+# Update payment (all roles)
+mutation UpdatePayment($input: UpdatePaymentInput!) {
+  updatePayment(input: $input) {
+    id
+    userId
+    vendorId
+    serviceType
+    serviceId
+    eventDate
+    eventTime
+    eventDuration
+    guestCount
+    specialRequests
+    totalAmount
+    advanceAmount
+    remainingAmount
+    paymentStatus
+    bookingStatus
+    visitStatus
+    visitRequestedAt
+    visitScheduledAt
+    visitCompletedAt
+    createdAt
+    updatedAt
+    service {
+      ... on PhotographyPackage {
+        id
+        packageName
+        price
+        duration
+        description
+        features
+      }
+      ... on CateringPackage {
+        id
+        packageName
+        pricePerPerson
+        minPersons
+        description
+        menuItems
+      }
+      ... on FarmHouse {
+        id
+        name
+        location
+        perNightPrice
+        amenities
+      }
+      ... on Venue {
+        id
+        name
+        location
+        capacity
+        pricePerHour
+        amenities
+      }
+    }
+    vendor {
+      id
+      businessName
+      email
+      phone
+      address
+    }
+    user {
+      id
+      firstName
+      lastName
+      email
+      phone
+    }
+  }
+}
+
+# Cancel booking (all roles)
+mutation CancelBooking($input: CancelBookingInput!) {
+  cancelBooking(input: $input) {
+    id
+    userId
+    vendorId
+    serviceType
+    serviceId
+    eventDate
+    eventTime
+    eventDuration
+    guestCount
+    specialRequests
+    totalAmount
+    advanceAmount
+    remainingAmount
+    paymentStatus
+    bookingStatus
+    visitStatus
+    visitRequestedAt
+    visitScheduledAt
+    visitCompletedAt
+    createdAt
+    updatedAt
+    service {
+      ... on PhotographyPackage {
+        id
+        packageName
+        price
+        duration
+        description
+        features
+      }
+      ... on CateringPackage {
+        id
+        packageName
+        pricePerPerson
+        minPersons
+        description
+        menuItems
+      }
+      ... on FarmHouse {
+        id
+        name
+        location
+        perNightPrice
+        amenities
+      }
+      ... on Venue {
+        id
+        name
+        location
+        capacity
+        pricePerHour
+        amenities
+      }
+    }
+    vendor {
+      id
+      businessName
+      email
+      phone
+      address
+    }
+    user {
+      id
+      firstName
+      lastName
+      email
+      phone
+    }
+  }
+}

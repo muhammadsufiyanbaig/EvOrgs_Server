@@ -96,6 +96,12 @@ export const adTypeDefs = gql`
     conversionCount: Int!
     targetAudience: [String!]
     scheduledBy: ID!
+    # NEW: Time slot fields
+    timeSlots: [TimeSlot!]!
+    currentSchedule: AdSchedule
+    totalScheduledRuns: Int!
+    successfulRuns: Int!
+    failedRuns: Int!
     createdAt: String!
     updatedAt: String!
   }
@@ -165,6 +171,58 @@ export const adTypeDefs = gql`
     adminStartDate: String!
     adminEndDate: String!
     adminNotes: String
+    # NEW: Time slot allocation
+    timeSlots: [TimeSlotInput!]!
+  }
+
+  # NEW: Time slot types
+  type TimeSlot {
+    id: ID!
+    startTime: String! # Format: "HH:MM"
+    endTime: String!   # Format: "HH:MM"
+    daysOfWeek: [Int!]! # 0-6 (Sunday-Saturday)
+    priority: Int!      # 1-5 (1 = highest priority)
+    isActive: Boolean!
+    createdAt: String!
+  }
+
+  input TimeSlotInput {
+    startTime: String! # Format: "HH:MM"
+    endTime: String!   # Format: "HH:MM"
+    daysOfWeek: [Int!]! # 0-6 (Sunday-Saturday)
+    priority: Int!      # 1-5 (1 = highest priority)
+  }
+
+  # NEW: Time slot management types
+  type TimeSlotAvailability {
+    timeSlot: String! # "HH:MM-HH:MM"
+    dayOfWeek: Int!
+    isAvailable: Boolean!
+    currentAd: ServiceAd
+    conflictingAds: [ServiceAd!]!
+  }
+
+  type AdSchedule {
+    id: ID!
+    adId: ID!
+    timeSlot: TimeSlot!
+    scheduledDate: String!
+    status: ScheduleStatus!
+    executedAt: String
+    failureReason: String
+    retryCount: Int!
+    nextRetry: String
+    createdAt: String!
+    updatedAt: String!
+  }
+
+  enum ScheduleStatus {
+    Scheduled
+    Running
+    Completed
+    Failed
+    Cancelled
+    Paused
   }
 
   # NEW: Missing input type for updateServiceAd mutation
@@ -241,6 +299,37 @@ export const adTypeDefs = gql`
     # ANALYTICS
     getAdAnalytics(adId: ID!): AdAnalytics
     getDashboardStats: DashboardStats
+    getTopPerformingAds(limit: Int): [ServiceAd!]!
+    getRevenueAnalytics(startDate: String, endDate: String): RevenueAnalytics
+    
+    # NEW: TIME SLOT QUERIES
+    getAvailableTimeSlots(date: String!, adType: AdType): [TimeSlotAvailability!]!
+    getAdSchedules(adId: ID, status: ScheduleStatus, date: String): [AdSchedule!]!
+    getScheduleById(id: ID!): AdSchedule
+    getUpcomingSchedules(limit: Int): [AdSchedule!]!
+    getFailedSchedules(limit: Int): [AdSchedule!]!
+    getTimeSlotConflicts(startDate: String!, endDate: String!): [TimeSlotAvailability!]!
+    
+    # VENDOR QUERIES - Vendors can see their requests and ads
+    getMyAdRequests(status: RequestStatus): [AdRequest!]!
+    getMyActiveAds: [ServiceAd!]!
+    getAdRequestById(id: ID!): AdRequest
+    getMyPayments: [AdPayment!]!
+    
+    # ADMIN QUERIES - Admins can see everything
+    getAllAdRequests(status: RequestStatus, vendorId: ID): [AdRequest!]!
+    getAllServiceAds(status: ServiceAdStatus, vendorId: ID): [ServiceAd!]!
+    getPendingAdRequests: [AdRequest!]!
+    getExternalAds(status: ExternalAdStatus): [ExternalAd!]!
+    getExternalAdById(id: ID!): ExternalAd
+    
+    # PAYMENT QUERIES
+    getAdPayments(adId: ID, externalAdId: ID): [AdPayment!]!
+    getPaymentById(id: ID!): AdPayment
+    
+    # ANALYTICS
+    getAdAnalytics(adId: ID!): AdAnalytics
+    getDashboardStats: DashboardStats
     
     # NEW: Missing queries from resolvers
     getTopPerformingAds(limit: Int): [ServiceAd!]!
@@ -253,12 +342,43 @@ export const adTypeDefs = gql`
     updateAdRequest(id: ID!, input: UpdateAdRequestInput!): AdRequest!
     cancelAdRequest(id: ID!): Boolean!
     
-    # ADMIN MUTATIONS - Approve/manage ads
+    # ADMIN MUTATIONS - Approve/manage ads with time slots
     approveAdRequest(id: ID!, input: ApproveAdRequestInput!): ServiceAd!
     rejectAdRequest(id: ID!, adminNotes: String): AdRequest!
     reviewAdRequest(id: ID!, status: RequestStatus!, adminNotes: String): AdRequest!
     
     # ADMIN SERVICE AD MANAGEMENT
+    pauseServiceAd(id: ID!): ServiceAd!
+    resumeServiceAd(id: ID!): ServiceAd!
+    cancelServiceAd(id: ID!): ServiceAd!
+    extendServiceAd(id: ID!, newEndDate: String!): ServiceAd!
+    activateServiceAd(id: ID!): ServiceAd!
+    expireServiceAd(id: ID!): ServiceAd!
+    updateServiceAd(id: ID!, input: UpdateServiceAdInput!): ServiceAd!
+    
+    # NEW: TIME SLOT MANAGEMENT MUTATIONS
+    updateAdTimeSlots(adId: ID!, timeSlots: [TimeSlotInput!]!): ServiceAd!
+    scheduleAdRun(adId: ID!, timeSlotId: ID!, scheduledDate: String!): AdSchedule!
+    cancelScheduledRun(scheduleId: ID!): AdSchedule!
+    rescheduleAdRun(scheduleId: ID!, newDate: String!, newTimeSlotId: ID): AdSchedule!
+    pauseAdSchedule(adId: ID!): ServiceAd!
+    resumeAdSchedule(adId: ID!): ServiceAd!
+    retryFailedSchedule(scheduleId: ID!): AdSchedule!
+    bulkScheduleAds(adIds: [ID!]!, timeSlots: [TimeSlotInput!]!, dateRange: String!): [AdSchedule!]!
+    
+    # EXTERNAL ADS (Admin only)
+    createExternalAd(input: CreateExternalAdInput!): ExternalAd!
+    updateExternalAd(id: ID!, input: UpdateExternalAdInput!): ExternalAd!
+    deleteExternalAd(id: ID!): Boolean!
+    
+    # PAYMENTS
+    createPayment(input: CreatePaymentInput!): AdPayment!
+    updatePaymentStatus(id: ID!, status: PaymentStatus!): AdPayment!
+    
+    # AD INTERACTIONS (Public)
+    recordImpression(adId: ID!, isExternal: Boolean!): Boolean!
+    recordClick(adId: ID!, isExternal: Boolean!): Boolean!
+    recordConversion(adId: ID!): Boolean!
     pauseServiceAd(id: ID!): ServiceAd!
     resumeServiceAd(id: ID!): ServiceAd!
     cancelServiceAd(id: ID!): ServiceAd!

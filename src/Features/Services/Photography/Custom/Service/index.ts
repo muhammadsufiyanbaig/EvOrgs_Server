@@ -2,7 +2,7 @@
 import { eq, and, like, between, desc, or, sql } from 'drizzle-orm';
 import { DrizzleDB } from '../../../../../Config/db';
 import { vendors, users, photographyCustomOrders } from '../../../../../Schema';
-import { CreateCustomOrderInput, QuoteOrderInput, SearchOrdersInput } from '../Types';
+import { CreateCustomOrderInput, QuoteOrderInput, SearchOrdersInput, AdminCustomOrderFilters, CustomOrderListResponse } from '../Types';
 import { v4 as uuidv4 } from 'uuid';
 import { PhotographyCustomOrderModel } from '../model';
 export class customPhotographyService {
@@ -214,6 +214,112 @@ async getVendorForOrder(vendorId: string) {
   } catch (error) {
     console.error('Error fetching vendor for order:', error);
     return null;
+  }
+}
+
+// Admin functionality - Get all orders with filters and pagination
+async getAllOrdersForAdmin(filters: AdminCustomOrderFilters = {}): Promise<CustomOrderListResponse> {
+  // Input validation
+  if (filters.minPrice !== undefined && filters.minPrice < 0) {
+    throw new Error('Minimum price cannot be negative');
+  }
+
+  if (filters.maxPrice !== undefined && filters.maxPrice < 0) {
+    throw new Error('Maximum price cannot be negative');
+  }
+
+  if (filters.minPrice !== undefined && filters.maxPrice !== undefined && filters.minPrice > filters.maxPrice) {
+    throw new Error('Minimum price cannot be greater than maximum price');
+  }
+
+  if (filters.minDuration !== undefined && filters.minDuration < 0) {
+    throw new Error('Minimum duration cannot be negative');
+  }
+
+  if (filters.maxDuration !== undefined && filters.maxDuration < 0) {
+    throw new Error('Maximum duration cannot be negative');
+  }
+
+  if (filters.minDuration !== undefined && filters.maxDuration !== undefined && filters.minDuration > filters.maxDuration) {
+    throw new Error('Minimum duration cannot be greater than maximum duration');
+  }
+
+  if (filters.startDate && filters.endDate) {
+    const startDate = new Date(filters.startDate);
+    const endDate = new Date(filters.endDate);
+    
+    if (startDate > endDate) {
+      throw new Error('Start date cannot be after end date');
+    }
+  }
+
+  if (filters.page !== undefined && filters.page < 1) {
+    throw new Error('Page number must be positive');
+  }
+
+  if (filters.limit !== undefined && (filters.limit < 1 || filters.limit > 100)) {
+    throw new Error('Limit must be between 1 and 100');
+  }
+
+  try {
+    const modelClass = new PhotographyCustomOrderModel(this.db);
+    return await modelClass.getAllOrdersForAdmin(filters);
+  } catch (error) {
+    console.error('Error fetching all orders for admin:', error);
+    throw new Error('Failed to fetch orders');
+  }
+}
+
+// Admin functionality - Get a specific order by ID (no ownership check)
+async getOrderByIdForAdmin(orderId: string) {
+  try {
+    const modelClass = new PhotographyCustomOrderModel(this.db);
+    const order = await modelClass.findOrderById(orderId);
+    
+    if (!order) {
+      throw new Error('Order not found');
+    }
+
+    return order;
+  } catch (error) {
+    console.error('Error fetching order by ID for admin:', error);
+    throw error;
+  }
+}
+
+// Admin functionality - Update order status
+async updateOrderStatusByAdmin(orderId: string, status: "Rejected" | "Requested" | "Quoted" | "Accepted") {
+  try {
+    // Check if order exists
+    const modelClass = new PhotographyCustomOrderModel(this.db);
+    const existingOrder = await modelClass.findOrderById(orderId);
+    
+    if (!existingOrder) {
+      throw new Error('Order not found');
+    }
+
+    return await modelClass.updateOrderStatusByAdmin(orderId, status);
+  } catch (error) {
+    console.error('Error updating order status by admin:', error);
+    throw error;
+  }
+}
+
+// Admin functionality - Delete order
+async deleteOrderByAdmin(orderId: string): Promise<boolean> {
+  try {
+    // Check if order exists
+    const modelClass = new PhotographyCustomOrderModel(this.db);
+    const existingOrder = await modelClass.findOrderById(orderId);
+    
+    if (!existingOrder) {
+      throw new Error('Order not found');
+    }
+
+    return await modelClass.deleteOrderByAdmin(orderId);
+  } catch (error) {
+    console.error('Error deleting order by admin:', error);
+    throw error;
   }
 }
 }

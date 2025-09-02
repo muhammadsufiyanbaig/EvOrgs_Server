@@ -1,0 +1,168 @@
+# Admin Voucher Queries - GraphQL
+
+# ========== ADMIN DASHBOARD QUERIES ==========
+
+# Get all vouchers with advanced filtering and pagination
+query AdminGetAllVouchers($filters: AdminVoucherFilters, $pagination: PaginationInput) {
+  adminGetAllVouchers(filters: $filters, pagination: $pagination) {
+    vouchers {
+      id
+      vendorId
+      couponCode
+      title
+      description
+      discountType
+      discountValue
+      maxDiscountAmount
+      minOrderValue
+      applicableFor
+      serviceTypes
+      totalUsageLimit
+      usagePerUser
+      currentUsageCount
+      validFrom
+      validUntil
+      isActive
+      createdAt
+      updatedAt
+    }
+    totalCount
+    currentPage
+    totalPages
+    hasNextPage
+    hasPreviousPage
+  }
+}
+
+# Get comprehensive system analytics
+query AdminGetVoucherAnalytics($dateFrom: String, $dateTo: String) {
+  adminGetVoucherAnalytics(dateFrom: $dateFrom, dateTo: $dateTo) {
+    totalSystemVouchers
+    totalSystemUsage
+    totalSystemDiscountGiven
+    totalSystemRevenueLost
+    averageDiscountPerVoucher
+    topPerformingVendors {
+      vendorId
+      vendorName
+      totalVouchers
+      totalUsage
+      totalDiscountGiven
+      averageVoucherValue
+      successRate
+    }
+    voucherDistributionByType {
+      discountType
+      count
+      totalValue
+      percentage
+    }
+    monthlyTrends {
+      month
+      year
+      vouchersCreated
+      vouchersUsed
+      totalDiscountGiven
+      uniqueUsers
+    }
+    fraudulentUsageCount
+    suspiciousActivities {
+      id
+      type
+      description
+      voucherId
+      userId
+      vendorId
+      severity
+      detectedAt
+      status
+    }
+  }
+}
+
+
+# Compare vendor voucher performance
+query AdminGetVendorVoucherComparison($vendorIds: [ID!]!, $dateFrom: String, $dateTo: String) {
+  adminGetVendorVoucherComparison(vendorIds: $vendorIds, dateFrom: $dateFrom, dateTo: $dateTo) {
+    vendorId
+    vendorName
+    totalVouchers
+    activeVouchers
+    totalUsage
+    totalDiscountGiven
+    averageUsagePerVoucher
+    topPerformingVoucher {
+      id
+      couponCode
+      title
+      currentUsageCount
+    }
+    conversionRate
+    fraudIncidents
+  }
+}
+
+# Get expired vouchers for cleanup
+query AdminGetExpiredVouchers($daysOld: Int!) {
+  adminGetExpiredVouchers(daysOld: $daysOld) {
+    id
+    vendorId
+    couponCode
+    title
+    discountType
+    discountValue
+    currentUsageCount
+    validFrom
+    validUntil
+    createdAt
+  }
+}
+
+
+# ========== VENDOR MONITORING QUERIES ==========
+
+# Get vouchers for specific vendor (admin view)
+query AdminGetVendorVouchers($vendorId: ID!, $filters: VoucherFilters) {
+  getVouchers(filters: $filters) {
+    id
+    vendorId
+    couponCode
+    title
+    discountType
+    discountValue
+    currentUsageCount
+    totalUsageLimit
+    isActive
+    validFrom
+    validUntil
+    createdAt
+  }
+}
+
+# Get voucher usage for specific voucher
+query AdminGetVoucherUsageDetails($voucherId: ID!) {
+  getVoucherUsage(filters: { voucherId: $voucherId }) {
+    id
+    voucherId
+    userId
+    bookingId
+    originalAmount
+    discountAmount
+    finalAmount
+    serviceType
+    serviceId
+    appliedAt
+    user {
+      id
+      firstName
+      lastName
+      email
+    }
+    voucher {
+      id
+      couponCode
+      title
+      vendorId
+    }
+  }
+}

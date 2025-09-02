@@ -51,3 +51,28 @@ export interface SearchCateringPackagesInput {
   serviceArea?: string[];
   menuItems?: string[];
 }
+
+export interface AdminCateringPackageFilters {
+  vendorId?: string;
+  packageName?: string;
+  isAvailable?: boolean;
+  minPrice?: number;
+  maxPrice?: number;
+  minGuests?: number;
+  maxGuests?: number;
+  serviceArea?: string[];
+  amenities?: string[];
+  dietaryOptions?: string[];
+  page?: number;
+  limit?: number;
+  sortBy?: 'name_asc' | 'name_desc' | 'price_asc' | 'price_desc' | 'guests_asc' | 'guests_desc' | 'created_at_asc' | 'created_at_desc';
+}
+
+export interface CateringPackageListResponse {
+  packages: CateringPackage[];
+  total: number;
+  page: number;
+  totalPages: number;
+  hasNextPage: boolean;
+  hasPreviousPage: boolean;
+}

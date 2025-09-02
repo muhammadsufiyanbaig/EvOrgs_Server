@@ -10,7 +10,8 @@ import { authMiddleware } from "./middleware/auth"; // Import your auth middlewa
 import { Context, createContext } from "./GraphQL/Context";
 import { createServer } from "http";
 import { initializeChatSocket } from "./Features/Chats/Socket";
-
+import { AdSchedulerService } from "./Features/Advertisment/Services/AdSchedulerService";
+import { db } from "./Config/db";
 
 dotenv.config();
 
@@ -20,6 +21,12 @@ async function startServer() {
 
   // Initialize Socket.IO for chat
   initializeChatSocket(httpServer);
+
+  // Initialize Ad Scheduler Service for automated ad execution
+  const adScheduler = new AdSchedulerService(db);
+  adScheduler.start();
+  console.log('🕒 Ad Scheduler Service started');
+
   // Middleware
   app.use(cors());
   app.use(bodyParser.json());

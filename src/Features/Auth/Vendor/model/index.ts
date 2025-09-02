@@ -1,5 +1,5 @@
 // src/services/VendorService.ts
-import { eq } from 'drizzle-orm';
+import { eq, like, or } from 'drizzle-orm';
 import { vendors } from '../../../../Schema';
 import { v4 as uuidv4 } from 'uuid';
 import { DrizzleDB } from '../../../../Config/db';
@@ -143,5 +143,88 @@ export class VendorModel {
     return this.db.select()
       .from(vendors)
       .where(eq(vendors.vendorStatus, 'Approved'));
+  }
+
+  // Admin methods for vendor management
+  async getAllVendors(page: number = 1, limit: number = 10): Promise<{ vendors: any[], total: number }> {
+    const offset = (page - 1) * limit;
+    
+    // Get total count
+    const totalResult = await this.db.select({ count: vendors.id }).from(vendors);
+    const total = totalResult.length;
+    
+    // Get paginated vendors
+    const result = await this.db.select()
+      .from(vendors)
+      .limit(limit)
+      .offset(offset);
+    
+    return {
+      vendors: result,
+      total
+    };
+  }
+
+  async searchVendors(searchTerm: string, page: number = 1, limit: number = 10): Promise<{ vendors: any[], total: number }> {
+    const offset = (page - 1) * limit;
+    
+    const searchPattern = `%${searchTerm}%`;
+    
+    const result = await this.db.select()
+      .from(vendors)
+      .where(
+        or(
+          like(vendors.vendorName, searchPattern),
+          like(vendors.vendorEmail, searchPattern),
+          like(vendors.vendorAddress, searchPattern)
+        )
+      )
+      .limit(limit)
+      .offset(offset);
+    
+    return {
+      vendors: result,
+      total: result.length
+    };
+  }
+
+  async getVendorsByStatus(status: "Pending" | "Approved" | "Rejected", page: number = 1, limit: number = 10): Promise<{ vendors: any[], total: number }> {
+    const offset = (page - 1) * limit;
+    
+    const result = await this.db.select()
+      .from(vendors)
+      .where(eq(vendors.vendorStatus, status))
+      .limit(limit)
+      .offset(offset);
+    
+    // Get total count for this status
+    const totalResult = await this.db.select({ count: vendors.id })
+      .from(vendors)
+      .where(eq(vendors.vendorStatus, status));
+    
+    return {
+      vendors: result,
+      total: totalResult.length
+    };
+  }
+
+  async getVendorsByType(vendorType: "FarmHouse" | "Venue" | "Catering" | "Photography", page: number = 1, limit: number = 10): Promise<{ vendors: any[], total: number }> {
+    const offset = (page - 1) * limit;
+    
+    const result = await this.db.select()
+      .from(vendors)
+      .where(eq(vendors.vendorType, vendorType))
+      .limit(limit)
+      .offset(offset);
+    
+    // Get total count for this type
+    const totalResult = await this.db.select({ count: vendors.id })
+      .from(vendors)
+      .where(eq(vendors.vendorType, vendorType));
+    
+    return {
+      vendors: result,
+      total: totalResult.length
+    };
   }
 }

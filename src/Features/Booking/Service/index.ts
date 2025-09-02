@@ -432,7 +432,7 @@ private async checkServiceAvailability(
       vendor
     };
   }
-  
+
   /**
    * Get bookings with filters
    */
@@ -502,5 +502,43 @@ private async checkServiceAvailability(
     }
     
     return result;
+  }
+
+  /**
+   * Get vendor visiting requests (vendor only)
+   */
+  async getVendorVisitingRequests(
+    vendorId: string,
+    filters: BookingFiltersInput = {}
+  ): Promise<any[]> {
+    return this.model.getVendorVisitingRequests(vendorId, filters);
+  }
+
+  /**
+   * Get vendor scheduled visits (vendor only)
+   */
+  async getVendorScheduledVisits(
+    vendorId: string,
+    filters: BookingFiltersInput = {}
+  ): Promise<any[]> {
+    return this.model.getVendorScheduledVisits(vendorId, filters);
+  }
+
+  /**
+   * Get all visiting requests (admin only)
+   */
+  async getAllVisitingRequests(
+    filters: BookingFiltersInput = {}
+  ): Promise<any[]> {
+    return this.model.getAllVisitingRequests(filters);
+  }
+
+  /**
+   * Get all scheduled visits (admin only)
+   */
+  async getAllScheduledVisits(
+    filters: BookingFiltersInput = {}
+  ): Promise<any[]> {
+    return this.model.getAllScheduledVisits(filters);
   }
 }

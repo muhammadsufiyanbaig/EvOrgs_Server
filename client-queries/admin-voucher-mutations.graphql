@@ -1,0 +1,112 @@
+# Admin Voucher Mutations - GraphQL
+
+# ========== ADMIN VOUCHER MANAGEMENT MUTATIONS ==========
+
+# Force create voucher for any vendor
+mutation AdminCreateVoucher($vendorId: ID!, $input: CreateVoucherInput!) {
+  adminCreateVoucher(vendorId: $vendorId, input: $input) {
+    id
+    vendorId
+    couponCode
+    title
+    description
+    discountType
+    discountValue
+    maxDiscountAmount
+    minOrderValue
+    applicableFor
+    serviceTypes
+    totalUsageLimit
+    usagePerUser
+    currentUsageCount
+    validFrom
+    validUntil
+    isActive
+    createdAt
+    updatedAt
+  }
+}
+
+# Update any voucher (admin override)
+mutation AdminUpdateVoucher($input: UpdateVoucherInput!) {
+  adminUpdateVoucher(input: $input) {
+    id
+    vendorId
+    couponCode
+    title
+    description
+    discountType
+    discountValue
+    maxDiscountAmount
+    minOrderValue
+    applicableFor
+    serviceTypes
+    totalUsageLimit
+    usagePerUser
+    currentUsageCount
+    validFrom
+    validUntil
+    isActive
+    updatedAt
+  }
+}
+
+# Force delete any voucher with reason
+mutation AdminForceDeleteVoucher($id: ID!, $reason: String!) {
+  adminForceDeleteVoucher(id: $id, reason: $reason)
+}
+
+# ========== VENDOR MANAGEMENT ==========
+
+# Suspend all vouchers for a vendor
+mutation AdminSuspendVendorVouchers($vendorId: ID!, $reason: String!, $duration: Int) {
+  adminSuspendVendorVouchers(vendorId: $vendorId, reason: $reason, duration: $duration)
+}
+
+# Restore vendor vouchers
+mutation AdminRestoreVendorVouchers($vendorId: ID!) {
+  adminRestoreVendorVouchers(vendorId: $vendorId)
+}
+
+# ========== VOUCHER LIMIT OVERRIDES ==========
+
+# Override voucher limits and restrictions
+mutation AdminOverrideVoucherLimits($voucherId: ID!, $newLimits: VoucherLimitOverride!) {
+  adminOverrideVoucherLimits(voucherId: $voucherId, newLimits: $newLimits) {
+    id
+    vendorId
+    couponCode
+    title
+    totalUsageLimit
+    usagePerUser
+    maxDiscountAmount
+    validUntil
+    updatedAt
+  }
+}
+
+# ========== SYSTEM MAINTENANCE ==========
+
+# Cleanup expired vouchers
+mutation AdminCleanupExpiredVouchers($daysOld: Int!) {
+  adminCleanupExpiredVouchers(daysOld: $daysOld)
+}
+
+# Recalculate voucher statistics
+mutation AdminRecalculateVoucherStatistics($vendorId: ID) {
+  adminRecalculateVoucherStatistics(vendorId: $vendorId)
+}
+
+# ========== REGULAR ADMIN OPERATIONS ==========
+
+# Standard deactivate voucher (already existing)
+mutation AdminDeactivateVoucher($id: ID!) {
+  deactivateVoucher(id: $id) {
+    id
+    vendorId
+    couponCode
+    title
+    isActive
+    updatedAt
+  }
+}

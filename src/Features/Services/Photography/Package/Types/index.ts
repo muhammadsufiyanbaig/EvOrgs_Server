@@ -42,8 +42,115 @@ export type SearchPhotographyPackagesInput = {
   photographerCount?: number;
 };
 
+// Admin-specific types for package management
+export type AdminPackageFilters = {
+  vendorId?: string;
+  packageName?: string;
+  serviceArea?: string[];
+  amenities?: string[];
+  isAvailable?: boolean;
+  minPrice?: number;
+  maxPrice?: number;
+  minDuration?: number;
+  maxDuration?: number;
+  minPhotographerCount?: number;
+  maxPhotographerCount?: number;
+  searchTerm?: string;
+  page?: number;
+  limit?: number;
+  sortBy?: string;
+};
+
+export type PackageListResponse = {
+  packages: PhotographyPackage[];
+  total: number;
+  page: number;
+  totalPages: number;
+  hasNextPage: boolean;
+  hasPreviousPage: boolean;
+};
+
+export type PackageStatsResponse = {
+  totalPackages: number;
+  availablePackages: number;
+  unavailablePackages: number;
+  averagePrice: number;
+  averageRating: number;
+  totalVendors: number;
+};
+
 // Validation functions for input types
 export class InputValidator {
+  static validateAdminFilters(filters: AdminPackageFilters): { isValid: boolean; errors: string[] } {
+    const errors: string[] = [];
+    
+    // Validate price range
+    if (filters.minPrice !== undefined && filters.maxPrice !== undefined) {
+      if (filters.minPrice < 0) {
+        errors.push('Minimum price must be non-negative');
+      }
+      if (filters.maxPrice < 0) {
+        errors.push('Maximum price must be non-negative');
+      }
+      if (filters.minPrice > filters.maxPrice) {
+        errors.push('Minimum price cannot be greater than maximum price');
+      }
+    }
+    
+    // Validate duration range
+    if (filters.minDuration !== undefined && filters.maxDuration !== undefined) {
+      if (filters.minDuration < 0) {
+        errors.push('Minimum duration must be non-negative');
+      }
+      if (filters.maxDuration < 0) {
+        errors.push('Maximum duration must be non-negative');
+      }
+      if (filters.minDuration > filters.maxDuration) {
+        errors.push('Minimum duration cannot be greater than maximum duration');
+      }
+    }
+    
+    // Validate photographer count range
+    if (filters.minPhotographerCount !== undefined && filters.maxPhotographerCount !== undefined) {
+      if (filters.minPhotographerCount < 1) {
+        errors.push('Minimum photographer count must be at least 1');
+      }
+      if (filters.maxPhotographerCount < 1) {
+        errors.push('Maximum photographer count must be at least 1');
+      }
+      if (filters.minPhotographerCount > filters.maxPhotographerCount) {
+        errors.push('Minimum photographer count cannot be greater than maximum photographer count');
+      }
+    }
+    
+    // Validate pagination
+    if (filters.page !== undefined && filters.page < 1) {
+      errors.push('Page number must be positive');
+    }
+    
+    if (filters.limit !== undefined && (filters.limit < 1 || filters.limit > 100)) {
+      errors.push('Limit must be between 1 and 100');
+    }
+    
+    // Validate sort options
+    const validSortOptions = [
+      'created_asc', 'created_desc',
+      'price_asc', 'price_desc',
+      'rating_asc', 'rating_desc',
+      'duration_asc', 'duration_desc',
+      'name_asc', 'name_desc'
+    ];
+    
+    if (filters.sortBy && !validSortOptions.includes(filters.sortBy)) {
+      errors.push(`Invalid sort option. Valid options are: ${validSortOptions.join(', ')}`);
+    }
+    
+    return {
+      isValid: errors.length === 0,
+      errors
+    };
+  }
+
   static validateCreatePackageInput(input: CreatePhotographyPackageInput): { isValid: boolean; errors: string[] } {
     const errors: string[] = [];
     

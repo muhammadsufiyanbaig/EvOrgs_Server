@@ -34,6 +34,26 @@ export class FarmhouseModel {
     return vendorFarmhouses;
   }
 
+  // Get all farmhouses (public - only available ones)
+  async getAllFarmhouses() {
+    const allFarmhouses = await this.db.select()
+      .from(farmhouses)
+      .where(eq(farmhouses.isAvailable, true))
+      .orderBy(desc(farmhouses.createdAt));
+    
+    return allFarmhouses;
+  }
+
+  // Get all farmhouses for admin (admin only - all farmhouses regardless of availability)
+  async getAllFarmhousesForAdmin() {
+    const allFarmhouses = await this.db.select()
+      .from(farmhouses)
+      .orderBy(desc(farmhouses.createdAt));
+    
+    return allFarmhouses;
+  }
+
+
   async searchFarmhouses(filters: FarmhouseFilters, page: number = 1, limit: number = 10) {
     const conditions = [];
   

@@ -1,5 +1,5 @@
 import { eq, and, sql, InferSelectModel } from 'drizzle-orm';
-import { servicesAds, externalAds, adPayments } from '../../../Schema';
+import { servicesAds, externalAds, adPayments, adTimeSlots, adSchedules, adExecutionLogs } from '../../../Schema';
 import { drizzle, PostgresJsDatabase } from 'drizzle-orm/postgres-js';
 
 export class AdModel {
@@ -376,5 +376,327 @@ export class AdModel {
       })
       .where(eq(servicesAds.id, adId));
     return true;
+  }
+
+  // ==================== TIME SLOT MANAGEMENT ====================
+
+  // Create time slots for an ad
+  async createTimeSlots(adId: string, timeSlots: Array<{
+    startTime: string;
+    endTime: string;
+    daysOfWeek: number[];
+    priority: number;
+  }>) {
+    const timeSlotRecords = timeSlots.map(slot => ({
+      id: crypto.randomUUID(),
+      adId,
+      startTime: slot.startTime,
+      endTime: slot.endTime,
+      daysOfWeek: slot.daysOfWeek,
+      priority: slot.priority,
+      isActive: true,
+      createdAt: new Date(),
+      updatedAt: new Date(),
+    }));
+
+    return await this.db.insert(adTimeSlots).values(timeSlotRecords).returning();
+  }
+
+  // Get time slots for an ad
+  async getTimeSlotsByAdId(adId: string) {
+    return await this.db
+      .select()
+      .from(adTimeSlots)
+      .where(eq(adTimeSlots.adId, adId))
+      .orderBy(adTimeSlots.priority, adTimeSlots.startTime);
+  }
+
+  // Update time slots for an ad
+  async updateTimeSlots(adId: string, timeSlots: Array<{
+    startTime: string;
+    endTime: string;
+    daysOfWeek: number[];
+    priority: number;
+  }>) {
+    // Delete existing time slots
+    await this.db.delete(adTimeSlots).where(eq(adTimeSlots.adId, adId));
+    
+    // Create new time slots
+    return await this.createTimeSlots(adId, timeSlots);
+  }
+
+  // Check time slot availability
+  async checkTimeSlotAvailability(date: string, startTime: string, endTime: string, adType?: string) {
+    const dayOfWeek = new Date(date).getDay();
+    
+    const conflictingAds = await this.db
+      .select({
+        ad: servicesAds,
+        timeSlot: adTimeSlots,
+        schedule: adSchedules,
+      })
+      .from(servicesAds)
+      .innerJoin(adTimeSlots, eq(adTimeSlots.adId, servicesAds.id))
+      .innerJoin(adSchedules, and(
+        eq(adSchedules.adId, servicesAds.id),
+        eq(adSchedules.timeSlotId, adTimeSlots.id),
+        eq(adSchedules.scheduledDate, date),
+        sql`${adSchedules.status} IN ('Scheduled', 'Running')`
+      ))
+      .where(
+        and(
+          eq(servicesAds.status, 'Active'),
+          eq(adTimeSlots.isActive, true),
+          sql`${adTimeSlots.daysOfWeek} @> ${JSON.stringify([dayOfWeek])}`,
+          // Check for time overlap
+          sql`(${adTimeSlots.startTime} < ${endTime} AND ${adTimeSlots.endTime} > ${startTime})`
+        )
+      );
+
+    return {
+      isAvailable: conflictingAds.length === 0,
+      conflictingAds: conflictingAds.map(c => c.ad),
+    };
+  }
+
+  // Get available time slots for a specific date and ad type
+  async getAvailableTimeSlots(date: string, adType?: string) {
+    const dayOfWeek = new Date(date).getDay();
+    
+    // Get all possible time slots for the ad type
+    const allTimeSlots = await this.db
+      .select({
+        timeSlot: adTimeSlots,
+        ad: servicesAds,
+      })
+      .from(adTimeSlots)
+      .innerJoin(servicesAds, eq(servicesAds.id, adTimeSlots.adId))
+      .where(
+        and(
+          eq(servicesAds.status, 'Active'),
+          eq(adTimeSlots.isActive, true),
+          sql`${adTimeSlots.daysOfWeek} @> ${JSON.stringify([dayOfWeek])}`,
+          adType ? eq(servicesAds.adType, adType as any) : sql`true`
+        )
+      );
+
+    // Check which ones are already scheduled
+    const scheduledSlots = await this.db
+      .select({
+        timeSlotId: adSchedules.timeSlotId,
+      })
+      .from(adSchedules)
+      .where(
+        and(
+          eq(adSchedules.scheduledDate, date),
+          sql`${adSchedules.status} IN ('Scheduled', 'Running')`
+        )
+      );
+
+    const scheduledSlotIds = new Set(scheduledSlots.map(s => s.timeSlotId));
+
+    return allTimeSlots
+      .filter(slot => !scheduledSlotIds.has(slot.timeSlot.id))
+      .map(slot => ({
+        timeSlot: `${slot.timeSlot.startTime}-${slot.timeSlot.endTime}`,
+        dayOfWeek,
+        isAvailable: true,
+        currentAd: null,
+        conflictingAds: [],
+        timeSlotData: slot.timeSlot,
+      }));
+  }
+
+  // ==================== SCHEDULE MANAGEMENT ====================
+
+  // Create a schedule for an ad
+  async createSchedule(adId: string, timeSlotId: string, scheduledDate: string) {
+    const schedule = {
+      id: crypto.randomUUID(),
+      adId,
+      timeSlotId,
+      scheduledDate,
+      scheduledDateTime: new Date(`${scheduledDate}T00:00:00`), // Will be updated with actual time
+      status: 'Scheduled' as const,
+      retryCount: 0,
+      maxRetries: 3,
+      createdAt: new Date(),
+      updatedAt: new Date(),
+    };
+
+    return await this.db.insert(adSchedules).values(schedule).returning();
+  }
+
+  // Get schedules for an ad
+  async getSchedulesByAdId(adId: string, status?: string, date?: string) {
+    const conditions = [eq(adSchedules.adId, adId)];
+    if (status) conditions.push(eq(adSchedules.status, status as any));
+    if (date) conditions.push(eq(adSchedules.scheduledDate, date));
+
+    return await this.db
+      .select({
+        schedule: adSchedules,
+        timeSlot: adTimeSlots,
+      })
+      .from(adSchedules)
+      .innerJoin(adTimeSlots, eq(adTimeSlots.id, adSchedules.timeSlotId))
+      .where(and(...conditions))
+      .orderBy(adSchedules.scheduledDateTime);
+  }
+
+  // Get all schedules with filters
+  async getAllSchedules(status?: string, date?: string, limit?: number) {
+    const conditions = [];
+    if (status) conditions.push(eq(adSchedules.status, status as any));
+    if (date) conditions.push(eq(adSchedules.scheduledDate, date));
+
+    let query = this.db
+      .select({
+        schedule: adSchedules,
+        timeSlot: adTimeSlots,
+        ad: servicesAds,
+      })
+      .from(adSchedules)
+      .innerJoin(adTimeSlots, eq(adTimeSlots.id, adSchedules.timeSlotId))
+      .innerJoin(servicesAds, eq(servicesAds.id, adSchedules.adId))
+      .where(conditions.length > 0 ? and(...conditions) : sql`true`)
+      .orderBy(adSchedules.scheduledDateTime);
+
+    if (limit) {
+      query = query.limit(limit) as any;
+    }
+
+    return await query;
+  }
+
+  // Update schedule status
+  async updateScheduleStatus(scheduleId: string, status: string, updateData?: any) {
+    const updateFields = {
+      status: status as any,
+      updatedAt: new Date(),
+      ...updateData,
+    };
+
+    return await this.db
+      .update(adSchedules)
+      .set(updateFields)
+      .where(eq(adSchedules.id, scheduleId))
+      .returning();
+  }
+
+  // Cancel schedule
+  async cancelSchedule(scheduleId: string) {
+    return await this.updateScheduleStatus(scheduleId, 'Cancelled');
+  }
+
+  // Reschedule an ad
+  async rescheduleAd(scheduleId: string, newDate: string, newTimeSlotId?: string) {
+    const updateData: any = {
+      scheduledDate: newDate,
+      status: 'Scheduled',
+      updatedAt: new Date(),
+    };
+
+    if (newTimeSlotId) {
+      updateData.timeSlotId = newTimeSlotId;
+    }
+
+    return await this.db
+      .update(adSchedules)
+      .set(updateData)
+      .where(eq(adSchedules.id, scheduleId))
+      .returning();
+  }
+
+  // ==================== EXECUTION LOGS ====================
+
+  // Create execution log
+  async createExecutionLog(logData: {
+    scheduleId: string;
+    adId: string;
+    action: string;
+    status: string;
+    message: string;
+    errorDetails?: any;
+    performanceMetrics?: any;
+  }) {
+    const log = {
+      id: crypto.randomUUID(),
+      ...logData,
+      status: logData.status as any, // Type assertion for enum compatibility
+      action: logData.action as any, // Type assertion for enum compatibility
+      createdAt: new Date(),
+    };
+
+    return await this.db.insert(adExecutionLogs).values(log).returning();
+  }
+
+  // Get execution logs
+  async getExecutionLogs(scheduleId?: string, adId?: string, limit?: number) {
+    const conditions = [];
+    if (scheduleId) conditions.push(eq(adExecutionLogs.scheduleId, scheduleId));
+    if (adId) conditions.push(eq(adExecutionLogs.adId, adId));
+
+    let query = this.db
+      .select()
+      .from(adExecutionLogs)
+      .where(conditions.length > 0 ? and(...conditions) : sql`true`)
+      .orderBy(sql`${adExecutionLogs.createdAt} DESC`);
+
+    if (limit) {
+      query = query.limit(limit) as any;
+    }
+
+    return await query;
+  }
+
+  // ==================== ANALYTICS WITH TIME SLOTS ====================
+
+  // Get schedule statistics
+  async getScheduleStatistics() {
+    const stats = await this.db
+      .select({
+        status: adSchedules.status,
+        count: sql<number>`count(*)`.as('count'),
+      })
+      .from(adSchedules)
+      .groupBy(adSchedules.status);
+
+    return stats.reduce((acc, stat) => {
+      if (stat.status) {
+        acc[stat.status] = Number(stat.count);
+      }
+      return acc;
+    }, {} as Record<string, number>);
+  }
+
+  // Get ad performance with schedule data
+  async getAdPerformanceWithSchedule(adId: string) {
+    const [adData] = await this.db
+      .select()
+      .from(servicesAds)
+      .where(eq(servicesAds.id, adId))
+      .limit(1);
+
+    const timeSlots = await this.getTimeSlotsByAdId(adId);
+    const schedules = await this.getSchedulesByAdId(adId);
+    const logs = await this.getExecutionLogs(undefined, adId, 50);
+
+    const scheduleStats = await this.db
+      .select({
+        totalRuns: sql<number>`count(*)`.as('totalRuns'),
+        successfulRuns: sql<number>`count(*) filter (where ${adSchedules.status} = 'Completed')`.as('successfulRuns'),
+        failedRuns: sql<number>`count(*) filter (where ${adSchedules.status} = 'Failed')`.as('failedRuns'),
+      })
+      .from(adSchedules)
+      .where(eq(adSchedules.adId, adId));
+
+    return {
+      ad: adData,
+      timeSlots,
+      schedules,
+      logs,
+      statistics: scheduleStats[0] || { totalRuns: 0, successfulRuns: 0, failedRuns: 0 },
+    };
   }
 }

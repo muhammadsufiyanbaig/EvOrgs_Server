@@ -2,7 +2,7 @@
 
 import { Context } from '../../../../../../GraphQL/Context';
 import { PhotographyService } from '../../Service';
-import { CreatePhotographyPackageInput, UpdatePhotographyPackageInput, SearchPhotographyPackagesInput } from '../../Types';
+import { CreatePhotographyPackageInput, UpdatePhotographyPackageInput, SearchPhotographyPackagesInput, AdminPackageFilters } from '../../Types';
 
 export const photographyResolvers = {
   Query: {
@@ -28,6 +28,64 @@ export const photographyResolvers = {
       const photographyService = new PhotographyService(db);
       
       return photographyService.searchPackages(input);
+    },
+
+    // ================ ADMIN QUERIES ================
+
+    // Admin: Get all packages with filtering and pagination
+    adminGetAllPackages: async (_: any, { filters }: { filters?: AdminPackageFilters }, context: Context) => {
+      const { db, Admin } = context;
+      const photographyService = new PhotographyService(db);
+      
+      return photographyService.getAllPackagesForAdmin(filters || {}, Admin);
+    },
+
+    // Admin: Get package by ID with vendor details
+    adminGetPackage: async (_: any, { id }: { id: string }, context: Context) => {
+      const { db, Admin } = context;
+      const photographyService = new PhotographyService(db);
+      
+      return photographyService.getPackageWithVendorById(id, Admin);
+    },
+
+    // Admin: Get package statistics
+    adminGetPackageStatistics: async (_: any, __: any, context: Context) => {
+      const { db, Admin } = context;
+      const photographyService = new PhotographyService(db);
+      
+      return photographyService.getPackageStatistics(Admin);
+    },
+
+    // Admin: Get recent packages
+    adminGetRecentPackages: async (_: any, { limit }: { limit?: number }, context: Context) => {
+      const { db, Admin } = context;
+      const photographyService = new PhotographyService(db);
+      
+      return photographyService.getRecentPackages(limit, Admin);
+    },
+
+    // Admin: Get packages by availability status
+    adminGetPackagesByAvailability: async (_: any, { isAvailable }: { isAvailable: boolean }, context: Context) => {
+      const { db, Admin } = context;
+      const photographyService = new PhotographyService(db);
+      
+      return photographyService.getPackagesByAvailability(isAvailable, Admin);
+    },
+
+    // Admin: Get high-value packages
+    adminGetHighValuePackages: async (_: any, { minPrice }: { minPrice: number }, context: Context) => {
+      const { db, Admin } = context;
+      const photographyService = new PhotographyService(db);
+      
+      return photographyService.getHighValuePackages(minPrice, Admin);
+    },
+
+    // Admin: Get packages by vendor
+    adminGetPackagesByVendor: async (_: any, { vendorId }: { vendorId: string }, context: Context) => {
+      const { db, Admin } = context;
+      const photographyService = new PhotographyService(db);
+      
+      return photographyService.getPackagesByVendor(vendorId, Admin);
     }
   },
   
@@ -62,6 +120,24 @@ export const photographyResolvers = {
       const photographyService = new PhotographyService(db);
       
       return photographyService.togglePackageAvailability(id, vendor);
+    },
+
+    // ================ ADMIN MUTATIONS ================
+
+    // Admin: Update package status
+    adminUpdatePackageStatus: async (_: any, { id, isAvailable }: { id: string, isAvailable: boolean }, context: Context) => {
+      const { db, Admin } = context;
+      const photographyService = new PhotographyService(db);
+      
+      return photographyService.updatePackageStatus(id, isAvailable, Admin);
+    },
+
+    // Admin: Delete package
+    adminDeletePackage: async (_: any, { id }: { id: string }, context: Context) => {
+      const { db, Admin } = context;
+      const photographyService = new PhotographyService(db);
+      
+      return photographyService.adminDeletePackage(id, Admin);
     }
   }
 };

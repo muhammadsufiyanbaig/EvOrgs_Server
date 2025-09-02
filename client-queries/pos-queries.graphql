@@ -1,0 +1,452 @@
+# ===================================
+# POS TRANSACTION QUERIES
+# ===================================
+
+# Get single transaction by ID
+query GetTransaction($id: ID!) {
+  transaction(id: $id) {
+    id
+    vendorId
+    bookingId
+    userId
+    transactionNumber
+    amount
+    transactionType
+    paymentMethod
+    description
+    receiptNumber
+    paymentGatewayReference
+    status
+    createdAt
+    processedAt
+    updatedAt
+    vendor {
+      id
+      businessName
+      email
+      phone
+      address
+    }
+    booking {
+      id
+      eventDate
+      eventTime
+      guestCount
+      totalAmount
+      bookingStatus
+      paymentStatus
+    }
+    user {
+      id
+      firstName
+      lastName
+      email
+      phone
+    }
+  }
+}
+
+# Get transactions with filters
+query GetTransactions($filter: TransactionFilterInput) {
+  transactions(filter: $filter) {
+    id
+    vendorId
+    bookingId
+    userId
+    transactionNumber
+    amount
+    transactionType
+    paymentMethod
+    description
+    receiptNumber
+    paymentGatewayReference
+    status
+    createdAt
+    processedAt
+    updatedAt
+    vendor {
+      id
+      businessName
+      email
+      phone
+    }
+    booking {
+      id
+      eventDate
+      eventTime
+      guestCount
+      totalAmount
+      bookingStatus
+      paymentStatus
+    }
+    user {
+      id
+      firstName
+      lastName
+      email
+      phone
+    }
+  }
+}
+
+# Get recent transactions
+query GetRecentTransactions($limit: Int) {
+  recentTransactions(limit: $limit) {
+    id
+    vendorId
+    bookingId
+    userId
+    transactionNumber
+    amount
+    transactionType
+    paymentMethod
+    description
+    receiptNumber
+    paymentGatewayReference
+    status
+    createdAt
+    processedAt
+    updatedAt
+    vendor {
+      id
+      businessName
+      email
+    }
+    booking {
+      id
+      eventDate
+      totalAmount
+      bookingStatus
+    }
+    user {
+      id
+      firstName
+      lastName
+      email
+    }
+  }
+}
+
+# Get total revenue
+query GetTotalRevenue {
+  totalRevenue
+}
+
+# Get transaction count by type
+query GetTransactionCountByType {
+  transactionCountByType {
+    type
+    amount
+  }
+}
+
+# Get total transaction count
+query GetTransactionCount {
+  transactionCount
+}
+
+# ===================================
+# PAYMENT SCHEDULE QUERIES
+# ===================================
+
+# Get single payment schedule by ID
+query GetPaymentSchedule($id: ID!) {
+  paymentSchedule(id: $id) {
+    id
+    bookingId
+    dueDate
+    amount
+    description
+    status
+    reminderSent
+    lastReminderDate
+    transactionId
+    createdAt
+    updatedAt
+    booking {
+      id
+      eventDate
+      eventTime
+      guestCount
+      totalAmount
+      bookingStatus
+      paymentStatus
+      user {
+        id
+        firstName
+        lastName
+        email
+        phone
+      }
+      vendor {
+        id
+        businessName
+        email
+        phone
+      }
+    }
+    transaction {
+      id
+      transactionNumber
+      amount
+      transactionType
+      paymentMethod
+      status
+      createdAt
+    }
+  }
+}
+
+# Get payment schedules by booking
+query GetPaymentSchedulesByBooking($bookingId: ID!) {
+  paymentSchedulesByBooking(bookingId: $bookingId) {
+    id
+    bookingId
+    dueDate
+    amount
+    description
+    status
+    reminderSent
+    lastReminderDate
+    transactionId
+    createdAt
+    updatedAt
+    booking {
+      id
+      eventDate
+      totalAmount
+      bookingStatus
+      user {
+        id
+        firstName
+        lastName
+        email
+      }
+    }
+    transaction {
+      id
+      transactionNumber
+      amount
+      status
+    }
+  }
+}
+
+# Get all payment schedules
+query GetAllPaymentSchedules {
+  allPaymentSchedules {
+    id
+    bookingId
+    dueDate
+    amount
+    description
+    status
+    reminderSent
+    lastReminderDate
+    transactionId
+    createdAt
+    updatedAt
+    booking {
+      id
+      eventDate
+      eventTime
+      guestCount
+      totalAmount
+      bookingStatus
+      user {
+        id
+        firstName
+        lastName
+        email
+        phone
+      }
+    }
+    transaction {
+      id
+      transactionNumber
+      amount
+      status
+    }
+  }
+}
+
+# Get upcoming payments
+query GetUpcomingPayments($limit: Int) {
+  upcomingPayments(limit: $limit) {
+    id
+    bookingId
+    dueDate
+    amount
+    description
+    status
+    reminderSent
+    lastReminderDate
+    createdAt
+    updatedAt
+    booking {
+      id
+      eventDate
+      totalAmount
+      user {
+        id
+        firstName
+        lastName
+        email
+      }
+    }
+  }
+}
+
+# Get pending payments total
+query GetPendingPaymentsTotal {
+  pendingPaymentsTotal
+}
+
+# Get overdue payments
+query GetOverduePayments {
+  overduePayments {
+    id
+    bookingId
+    dueDate
+    amount
+    description
+    status
+    reminderSent
+    lastReminderDate
+    createdAt
+    updatedAt
+    booking {
+      id
+      eventDate
+      totalAmount
+      user {
+        id
+        firstName
+        lastName
+        email
+        phone
+      }
+    }
+  }
+}
+
+# ===================================
+# EXPENSE QUERIES
+# ===================================
+
+# Get single expense by ID
+query GetExpense($id: ID!) {
+  expense(id: $id) {
+    id
+    bookingId
+    vendorId
+    description
+    amount
+    category
+    receiptUrl
+    expenseDate
+    createdAt
+    updatedAt
+    booking {
+      id
+      eventDate
+      eventTime
+      guestCount
+      totalAmount
+      bookingStatus
+      user {
+        id
+        firstName
+        lastName
+        email
+      }
+    }
+    vendor {
+      id
+      businessName
+      email
+      phone
+    }
+  }
+}
+
+# Get expenses by booking
+query GetExpensesByBooking($bookingId: ID!) {
+  expensesByBooking(bookingId: $bookingId) {
+    id
+    bookingId
+    vendorId
+    description
+    amount
+    category
+    receiptUrl
+    expenseDate
+    createdAt
+    updatedAt
+    booking {
+      id
+      eventDate
+      totalAmount
+      user {
+        id
+        firstName
+        lastName
+      }
+    }
+    vendor {
+      id
+      businessName
+    }
+  }
+}
+
+# Get all expenses
+query GetAllExpenses($startDate: String, $endDate: String) {
+  allExpenses(startDate: $startDate, endDate: $endDate) {
+    id
+    bookingId
+    vendorId
+    description
+    amount
+    category
+    receiptUrl
+    expenseDate
+    createdAt
+    updatedAt
+    booking {
+      id
+      eventDate
+      totalAmount
+      user {
+        id
+        firstName
+        lastName
+      }
+    }
+    vendor {
+      id
+      businessName
+    }
+  }
+}
+
+# Get total expenses
+query GetTotalExpenses($startDate: String, $endDate: String) {
+  totalExpenses(startDate: $startDate, endDate: $endDate)
+}
+
+# Get expenses by category
+query GetExpensesByCategory {
+  expensesByCategory {
+    category
+    amount
+  }
+}
+
+# Get monthly expenses
+query GetMonthlyExpenses($year: Int!) {
+  monthlyExpenses(year: $year) {
+    month
+    amount
+  }
+}

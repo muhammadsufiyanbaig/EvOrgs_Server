@@ -2,12 +2,20 @@
 import { Context } from '../../../../GraphQL/Context';
 import { AdminModel } from '../model';
 import { Admin, AdminLoginInput, AdminResponse, AdminSignupInput, AuthResponse, ChangePasswordInput, OtpRequestInput, OtpResponse, OtpVerifyInput, PasswordResetResponse, ResendOtpInput, ResetPasswordInput, UpdateProfileInput } from '../Types';
+import { UserModel } from '../../User/model';
+import { ListUsersInput, UserListResponse } from '../../User/Types';
+import { VendorModel } from '../../Vendor/model';
+import { ListVendorsInput, VendorListResponse } from '../../Vendor/Types';
 
 export class AdminService {
   private adminModel: AdminModel;
+  private userModel: UserModel;
+  private vendorModel: VendorModel;
 
   constructor(private db: Context['db']) {
     this.adminModel = new AdminModel(db);
+    this.userModel = new UserModel(db);
+    this.vendorModel = new VendorModel(db);
   }
 
   async me(_parent: unknown, _args: unknown, { user }: Context): Promise<Admin | null> {
@@ -107,5 +115,135 @@ export class AdminService {
     }
 
     return this.adminModel.deleteAccount(user.id);
+  }
+
+  // User Management Methods for Admin
+  async listAllUsers(_parent: unknown, { input }: { input?: ListUsersInput }, { user }: Context): Promise<UserListResponse> {
+    if (!user || user.role !== "Admin") {
+      throw new Error("Unauthorized: Only admins can access user list");
+    }
+
+    const { page = 1, limit = 10, search } = input || {};
+
+    let result;
+    if (search) {
+      result = await this.userModel.searchUsers(search, page, limit);
+    } else {
+      result = await this.userModel.getAllUsers(page, limit);
+    }
+
+    const totalPages = Math.ceil(result.total / limit);
+
+    return {
+      users: result.users,
+      total: result.total,
+      page,
+      limit,
+      totalPages
+    };
+  }
+
+  async getUserById(_parent: unknown, { userId }: { userId: string }, { user }: Context): Promise<any> {
+    if (!user || user.role !== "Admin") {
+      throw new Error("Unauthorized: Only admins can access user details");
+    }
+
+    const userData = await this.userModel.findById(userId);
+    if (!userData) {
+      throw new Error("User not found");
+    }
+
+    return userData;
+  }
+
+  async deleteUser(_parent: unknown, { userId }: { userId: string }, { user }: Context): Promise<boolean> {
+    if (!user || user.role !== "Admin") {
+      throw new Error("Unauthorized: Only admins can delete users");
+    }
+
+    const userData = await this.userModel.findById(userId);
+    if (!userData) {
+      throw new Error("User not found");
+    }
+
+    await this.userModel.delete(userId);
+    return true;
+  }
+
+  // Vendor Management Methods for Admin
+  async listAllVendors(_parent: unknown, { input }: { input?: ListVendorsInput }, { user }: Context): Promise<VendorListResponse> {
+    if (!user || user.role !== "Admin") {
+      throw new Error("Unauthorized: Only admins can access vendor list");
+    }
+
+    const { page = 1, limit = 10, search, status, vendorType } = input || {};
+
+    let result;
+    
+    if (search) {
+      result = await this.vendorModel.searchVendors(search, page, limit);
+    } else if (status) {
+      result = await this.vendorModel.getVendorsByStatus(status, page, limit);
+    } else if (vendorType) {
+      result = await this.vendorModel.getVendorsByType(vendorType, page, limit);
+    } else {
+      result = await this.vendorModel.getAllVendors(page, limit);
+    }
+
+    const totalPages = Math.ceil(result.total / limit);
+
+    return {
+      vendors: result.vendors,
+      total: result.total,
+      page,
+      limit,
+      totalPages
+    };
+  }
+
+  async getVendorById(_parent: unknown, { vendorId }: { vendorId: string }, { user }: Context): Promise<any> {
+    if (!user || user.role !== "Admin") {
+      throw new Error("Unauthorized: Only admins can access vendor details");
+    }
+
+    const vendorData = await this.vendorModel.findVendorById(vendorId);
+    if (!vendorData) {
+      throw new Error("Vendor not found");
+    }
+
+    return vendorData;
+  }
+
+  async deleteVendor(_parent: unknown, { vendorId }: { vendorId: string }, { user }: Context): Promise<boolean> {
+    if (!user || user.role !== "Admin") {
+      throw new Error("Unauthorized: Only admins can delete vendors");
+    }
+
+    const vendorData = await this.vendorModel.findVendorById(vendorId);
+    if (!vendorData) {
+      throw new Error("Vendor not found");
+    }
+
+    await this.vendorModel.deleteVendor(vendorId);
+    return true;
+  }
+
+  async updateVendorStatus(_parent: unknown, { input }: { input: { vendorId: string, status: "Pending" | "Approved" | "Rejected", message?: string } }, { user }: Context): Promise<boolean> {
+    if (!user || user.role !== "Admin") {
+      throw new Error("Unauthorized: Only admins can update vendor status");
+    }
+
+    const vendorData = await this.vendorModel.findVendorById(input.vendorId);
+    if (!vendorData) {
+      throw new Error("Vendor not found");
+    }
+
+    await this.vendorModel.updateVendorApproval({
+      vendorId: input.vendorId,
+      status: input.status,
+      message: input.message
+    });
+
+    return true;
   }
 }

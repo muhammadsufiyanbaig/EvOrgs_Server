@@ -86,8 +86,103 @@ export const AdminTypeDefs = gql`
     newPassword: String!
   }
 
+  # User Management Types for Admin
+  type UserListResponse {
+    users: [User!]!
+    total: Int!
+    page: Int!
+    limit: Int!
+    totalPages: Int!
+  }
+
+  input ListUsersInput {
+    page: Int = 1
+    limit: Int = 10
+    search: String
+  }
+
+  # Import User type from User schema
+  type User {
+    id: ID!
+    firstName: String!
+    lastName: String!
+    email: String!
+    phone: String
+    address: String
+    fcmToken: [String]
+    profileImage: String
+    dateOfBirth: String
+    gender: String!
+    createdAt: String!
+    isVerified: Boolean!
+  }
+
+  # Vendor Management Types for Admin
+  type VendorListResponse {
+    vendors: [Vendor!]!
+    total: Int!
+    page: Int!
+    limit: Int!
+    totalPages: Int!
+  }
+
+  input ListVendorsInput {
+    page: Int = 1
+    limit: Int = 10
+    search: String
+    status: VendorStatus
+    vendorType: VendorType
+  }
+
+  input UpdateVendorStatusInput {
+    vendorId: ID!
+    status: VendorStatus!
+    message: String
+  }
+
+  # Import Vendor type from Vendor schema
+  type Vendor {
+    id: ID!
+    vendorName: String!
+    vendorEmail: String!
+    vendorPhone: String
+    fcmToken: [String]
+    vendorAddress: String
+    vendorProfileDescription: String
+    vendorWebsite: String
+    vendorSocialLinks: [String]
+    profileImage: String
+    bannerImage: String
+    vendorType: VendorType!
+    vendorStatus: VendorStatus!
+    vendorTypeId: ID
+    rating: Float
+    reviewCount: Int
+    createdAt: String!
+    updatedAt: String!
+  }
+
+  enum VendorType {
+    FarmHouse
+    Venue
+    Catering
+    Photography
+  }
+
+  enum VendorStatus {
+    Pending
+    Approved
+    Rejected
+  }
+
   extend type Query {
     adminMe: Admin
+    # User Management Queries for Admin
+    adminListAllUsers(input: ListUsersInput): UserListResponse!
+    adminGetUserById(userId: ID!): User
+    # Vendor Management Queries for Admin
+    adminListAllVendors(input: ListVendorsInput): VendorListResponse!
+    adminGetVendorById(vendorId: ID!): Vendor
   }
 
   extend type Mutation {
@@ -101,5 +196,10 @@ export const AdminTypeDefs = gql`
     adminResendOtp(input: AdminResendOtpInput!): Boolean!
     adminSetNewPassword(input: AdminSetNewPasswordInput!): Boolean!
     adminDeleteAccount: Boolean!
+    # User Management Mutations for Admin
+    adminDeleteUser(userId: ID!): Boolean!
+    # Vendor Management Mutations for Admin
+    adminDeleteVendor(vendorId: ID!): Boolean!
+    adminUpdateVendorStatus(input: UpdateVendorStatusInput!): Boolean!
   }
 `;

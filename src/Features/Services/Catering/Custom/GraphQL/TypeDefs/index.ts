@@ -48,8 +48,46 @@ export const customCateringTypeDefs = gql`
     status: CustomPackageStatus
     minGuestCount: Int
     maxGuestCount: Int
+    minPrice: Float
+    maxPrice: Float
     startDate: String
     endDate: String
+    searchTerm: String
+    sortBy: String
+    page: Int
+    limit: Int
+  }
+
+  # Search response type with pagination
+  type CustomPackageSearchResponse {
+    packages: [CustomCateringPackage!]!
+    total: Int!
+    page: Int!
+    totalPages: Int!
+    hasNextPage: Boolean!
+    hasPreviousPage: Boolean!
+  }
+
+  # Paginated response type for admin
+  type PaginatedCustomPackages {
+    packages: [CustomCateringPackage!]!
+    totalCount: Int!
+    page: Int!
+    limit: Int!
+    totalPages: Int!
+  }
+
+  # Admin filter input
+  input AdminCustomPackageFilters {
+    status: CustomPackageStatus
+    vendorId: ID
+    userId: ID
+    minGuestCount: Int
+    maxGuestCount: Int
+    startDate: String
+    endDate: String
+    page: Int
+    limit: Int
   }
 
   # Query type for fetching custom packages
@@ -60,11 +98,14 @@ export const customCateringTypeDefs = gql`
     # Vendor can fetch all custom packages
     getVendorCustomPackages: [CustomCateringPackage!]!
     
-    # Search custom packages for vendors
-    searchCustomPackages(filters: CustomPackageSearchFilters): [CustomCateringPackage!]!
+    # Search custom packages for vendors with enhanced filters and pagination
+    searchCustomPackages(filters: CustomPackageSearchFilters): CustomPackageSearchResponse!
     
     # Get a single custom package by ID
     getCustomPackageById(packageId: ID!): CustomCateringPackage
+
+    # Admin can fetch all custom packages with pagination and filters
+    adminGetAllCustomPackages(filters: AdminCustomPackageFilters): PaginatedCustomPackages!
   }
 
   # Mutation type for creating and managing custom packages

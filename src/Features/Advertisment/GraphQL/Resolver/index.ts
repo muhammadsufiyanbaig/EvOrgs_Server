@@ -108,6 +108,28 @@ export const adResolvers = {
       const adService = createAdService(context);
       return await adService.getRevenueAnalytics(context.Admin, startDate, endDate);
     },
+
+    // ==================== TIME SLOT QUERIES ====================
+
+    getAvailableTimeSlots: async (_: any, { date, adType }: any, context: Context) => {
+      const adService = createAdService(context);
+      return await adService.getAvailableTimeSlots(date, adType);
+    },
+
+    getAdSchedules: async (_: any, { adId, status, date }: any, context: Context) => {
+      const adService = createAdService(context);
+      return await adService.getAdSchedules(adId, status, date, context.Admin);
+    },
+
+    getUpcomingSchedules: async (_: any, { limit }: any, context: Context) => {
+      const adService = createAdService(context);
+      return await adService.getUpcomingSchedules(limit);
+    },
+
+    getFailedSchedules: async (_: any, { limit }: any, context: Context) => {
+      const adService = createAdService(context);
+      return await adService.getFailedSchedules(limit);
+    }
   },
 
   Mutation: {
@@ -214,6 +236,53 @@ export const adResolvers = {
     recordConversion: async (_: any, { adId }: any, context: Context) => {
       const adService = createAdService(context);
       return await adService.recordConversion(adId);
+    },
+
+    // ==================== TIME SLOT MUTATIONS ====================
+
+    approveAdRequestWithTimeSlots: async (_: any, { id, input }: any, context: Context) => {
+      const adService = createAdService(context);
+      return await adService.approveAdRequestWithTimeSlots(id, input, context.Admin);
+    },
+
+    updateAdTimeSlots: async (_: any, { adId, timeSlots }: any, context: Context) => {
+      const adService = createAdService(context);
+      return await adService.updateAdTimeSlots(adId, timeSlots, context.Admin);
+    },
+
+    scheduleAdRun: async (_: any, { adId, timeSlotId, scheduledDate }: any, context: Context) => {
+      const adService = createAdService(context);
+      return await adService.scheduleAdRun(adId, timeSlotId, scheduledDate, context.Admin);
+    },
+
+    cancelScheduledRun: async (_: any, { scheduleId }: any, context: Context) => {
+      const adService = createAdService(context);
+      return await adService.cancelScheduledRun(scheduleId, context.Admin);
+    },
+
+    rescheduleAdRun: async (_: any, { scheduleId, newDate, newTimeSlotId }: any, context: Context) => {
+      const adService = createAdService(context);
+      return await adService.rescheduleAdRun(scheduleId, newDate, newTimeSlotId, context.Admin);
+    },
+
+    retryFailedSchedule: async (_: any, { scheduleId }: any, context: Context) => {
+      const adService = createAdService(context);
+      return await adService.retryFailedSchedule(scheduleId, context.Admin);
+    },
+
+    pauseAdSchedule: async (_: any, { adId }: any, context: Context) => {
+      const adService = createAdService(context);
+      return await adService.pauseAdSchedule(adId, context.Admin);
+    },
+
+    resumeAdSchedule: async (_: any, { adId }: any, context: Context) => {
+      const adService = createAdService(context);
+      return await adService.resumeAdSchedule(adId, context.Admin);
+    },
+
+    bulkScheduleAds: async (_: any, { adIds, timeSlots, dateRange }: any, context: Context) => {
+      const adService = createAdService(context);
+      return await adService.bulkScheduleAds(adIds, timeSlots, dateRange, context.Admin);
     }
   }
 };

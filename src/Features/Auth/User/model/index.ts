@@ -1,5 +1,5 @@
 // utils/models/UserModel.ts
-import { eq } from 'drizzle-orm';
+import { eq, like, or } from 'drizzle-orm';
 import { v4 as uuidv4 } from 'uuid';
 import { users } from '../../../../Schema';
 import {DrizzleDB} from '../../../../Config/db'
@@ -113,5 +113,48 @@ export class UserModel {
   async delete(userId: string): Promise<void> {
     await this.db.delete(users)
       .where(eq(users.id, userId));
+  }
+
+  async getAllUsers(page: number = 1, limit: number = 10): Promise<{ users: User[], total: number }> {
+    const offset = (page - 1) * limit;
+    
+    // Get total count
+    const totalResult = await this.db.select({ count: users.id }).from(users);
+    const total = totalResult.length;
+    
+    // Get paginated users
+    const result = await this.db.select()
+      .from(users)
+      .limit(limit)
+      .offset(offset);
+    
+    return {
+      users: result as unknown as User[],
+      total
+    };
+  }
+
+  async searchUsers(searchTerm: string, page: number = 1, limit: number = 10): Promise<{ users: User[], total: number }> {
+    const offset = (page - 1) * limit;
+    
+    // For search, we'll use a simple approach - in a real app you might want to use full-text search
+    const searchPattern = `%${searchTerm}%`;
+    
+    const result = await this.db.select()
+      .from(users)
+      .where(
+        or(
+          like(users.firstName, searchPattern),
+          like(users.lastName, searchPattern),
+          like(users.email, searchPattern)
+        )
+      )
+      .limit(limit)
+      .offset(offset);
+    
+    return {
+      users: result as unknown as User[],
+      total: result.length
+    };
   }
 }

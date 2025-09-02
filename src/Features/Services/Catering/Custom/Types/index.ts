@@ -21,13 +21,35 @@ export interface CreateCustomPackageInput {
 }
 
 export interface QuoteCustomPackageInput {
+  response: any;
   packageId: string;
   price: number;
 }
 
 export interface RespondToQuoteInput {
+  response: any;
   packageId: string;
-  response: CustomPackageStatus.Accepted | CustomPackageStatus.Rejected;
+  accepted: boolean;
+  message?: string;
+}
+
+export interface AdminCustomPackageFilters {
+  status?: CustomPackageStatus;
+  vendorId?: string;
+  userId?: string;
+  minGuestCount?: number;
+  maxGuestCount?: number;
+  startDate?: Date;
+  endDate?: Date;
+  page?: number;
+  limit?: number;
+}
+
+export interface CustomPackageListResponse {
+  packages: CustomCateringPackage[];
+  total: number;
+  page: number;
+  totalPages: number;
 }
 
 // Search Filters Interface
@@ -35,25 +57,46 @@ export interface CustomPackageSearchFilters {
   status?: CustomPackageStatus;
   minGuestCount?: number;
   maxGuestCount?: number;
+  minPrice?: number;
+  maxPrice?: number;
   startDate?: string;
   endDate?: string;
+  searchTerm?: string; // For searching in order details
+  sortBy?: 'price_asc' | 'price_desc' | 'guest_count_asc' | 'guest_count_desc' | 'event_date_asc' | 'event_date_desc' | 'created_at_asc' | 'created_at_desc';
+  page?: number;
+  limit?: number;
+}
+
+export interface CustomPackageSearchResponse {
+  packages: CustomCateringPackage[];
+  total: number;
+  page: number;
+  totalPages: number;
+  hasNextPage: boolean;
+  hasPreviousPage: boolean;
+}
+
+export interface AdminCustomPackageFilters {
+  status?: CustomPackageStatus;
+  vendorId?: string;
+  userId?: string;
+  minGuestCount?: number;
+  maxGuestCount?: number;
+  startDate?: Date;
+  endDate?: Date;
+  page?: number;
+  limit?: number;
 }
 
 // GraphQL Context Type
 export interface GraphQLContext {
   user?: {
     id: string;
-    // Add other user properties as needed
   };
   vendor?: {
     id: string;
-    // Add other vendor properties as needed
   };
-  admin?: {
-    id: string;
-    // Add other admin properties as needed
-  };
-  db: any; // Replace with your actual database type
+  admin?: boolean;
 }
 
 // Custom Error Class

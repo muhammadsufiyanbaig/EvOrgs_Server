@@ -94,3 +94,18 @@ export interface User {
     purpose: 'registration' | 'password-reset' | 'login';
     userType: string;
   }
+
+  // Admin specific types for user management
+  export interface ListUsersInput {
+    page?: number;
+    limit?: number;
+    search?: string;
+  }
+
+  export interface UserListResponse {
+    users: User[];
+    total: number;
+    page: number;
+    limit: number;
+    totalPages: number;
+  }

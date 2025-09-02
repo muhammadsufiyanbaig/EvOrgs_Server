@@ -14,7 +14,23 @@ import {
     VoucherValidationResult,
     DiscountType,
     ServiceType,
-    ApplicableFor
+    ApplicableFor,
+    AdminVoucherFilters,
+    PaginationInput,
+    VoucherListResponse,
+    AdminVoucherAnalytics,
+    FlagType,
+    FlaggedVoucher,
+    VendorVoucherPerformance,
+    VoucherFraudReport,
+    TrendPeriod,
+    TrendGroupBy,
+    VoucherTrendAnalysis,
+    VoucherComplianceReport,
+    VoucherRefund,
+    BulkVoucherUpdateInput,
+    VoucherLimitOverride,
+    SystemPromotionInput
 } from '../Types';
 
 export class VoucherService {
@@ -105,7 +121,6 @@ export class VoucherService {
         // });
     }
 
-    // Query service methods
     async getVouchers(filters?: VoucherFilters, vendorId?: string, isAdmin?: boolean): Promise<Voucher[]> {
         if (!vendorId && !isAdmin) {
             throw new GraphQLError('Unauthorized', { extensions: { code: 'UNAUTHORIZED' } });
@@ -412,5 +427,357 @@ export class VoucherService {
 
     async getUserForUsage(userId: string): Promise<any> {
         return await this.voucherModel.findUserById(userId);
+    }
+
+    // ========== ADMIN-SPECIFIC SERVICE METHODS ==========
+
+    // Admin query methods
+    async adminGetAllVouchers(filters?: AdminVoucherFilters, pagination?: PaginationInput): Promise<VoucherListResponse> {
+        return await this.voucherModel.adminFindAllVouchers(filters, pagination);
+    }
+
+    async adminGetVoucherAnalytics(dateFrom?: string, dateTo?: string): Promise<AdminVoucherAnalytics> {
+        return await this.voucherModel.getAdminVoucherAnalytics(dateFrom, dateTo);
+    }
+
+    async adminGetFlaggedVouchers(flagType?: FlagType): Promise<FlaggedVoucher[]> {
+        return await this.voucherModel.getFlaggedVouchers(flagType);
+    }
+
+    async adminGetVendorVoucherComparison(vendorIds: string[], dateFrom?: string, dateTo?: string): Promise<VendorVoucherPerformance[]> {
+        return await this.voucherModel.getVendorVoucherComparison(vendorIds, dateFrom, dateTo);
+    }
+
+    async adminGetVoucherFraudReports(dateFrom?: string, dateTo?: string): Promise<VoucherFraudReport[]> {
+        // TODO: Implement fraud reporting system
+        // This would typically query a separate fraud_reports table
+        return [];
+    }
+
+    async adminGetExpiredVouchers(daysOld: number): Promise<Voucher[]> {
+        return await this.voucherModel.getExpiredVouchers(daysOld);
+    }
+
+    async adminGetVoucherTrends(period: TrendPeriod, groupBy: TrendGroupBy): Promise<VoucherTrendAnalysis> {
+        // TODO: Implement comprehensive trend analysis
+        // This would require complex data aggregation and analysis
+        return {
+            period,
+            groupBy,
+            dataPoints: [],
+            summary: {
+                totalCount: 0,
+                totalValue: 0,
+                averageValue: 0,
+                growthRate: 0,
+                peakPeriod: ''
+            }
+        };
+    }
+
+    async adminGetVoucherComplianceReport(vendorId: string): Promise<VoucherComplianceReport> {
+        // TODO: Implement compliance checking system
+        // This would check vouchers against business rules and policies
+        return {
+            vendorId,
+            vendorName: `Vendor ${vendorId}`,
+            totalVouchers: 0,
+            compliantVouchers: 0,
+            violationCount: 0,
+            complianceScore: 100,
+            violations: [],
+            recommendations: []
+        };
+    }
+
+    // Admin mutation methods
+    async adminCreateVoucher(vendorId: string, input: CreateVoucherInput): Promise<Voucher> {
+        // Admin can create vouchers for any vendor without ownership checks
+        return await this.createVoucher(input, vendorId);
+    }
+
+    async adminUpdateVoucher(input: UpdateVoucherInput): Promise<Voucher> {
+        // Admin can update any voucher without vendor ownership checks
+        const existingVoucher = await this.voucherModel.findVoucherById(input.id);
+        if (!existingVoucher) {
+            throw new GraphQLError('Voucher not found', { extensions: { code: 'NOT_FOUND' } });
+        }
+
+        // Check for duplicate coupon code if updating
+        if (input.couponCode && input.couponCode !== existingVoucher.couponCode) {
+            const isDuplicate = await this.voucherModel.checkDuplicateCouponCode(
+                input.couponCode, 
+                existingVoucher.vendorId, 
+                input.id
+            );
+            if (isDuplicate) {
+                throw new GraphQLError('Coupon code already exists for this vendor', { 
+                    extensions: { code: 'BAD_USER_INPUT' } 
+                });
+            }
+        }
+
+        const updateData = {
+            ...input,
+            discountValue: input.discountValue !== undefined ? String(input.discountValue) : undefined,
+            maxDiscountAmount: input.maxDiscountAmount !== undefined ? String(input.maxDiscountAmount) : undefined,
+            minOrderValue: input.minOrderValue !== undefined ? String(input.minOrderValue) : undefined,
+            updatedAt: new Date()
+        };
+
+        // Remove undefined values
+        Object.keys(updateData).forEach(key => {
+            if (updateData[key as keyof typeof updateData] === undefined) {
+                delete updateData[key as keyof typeof updateData];
+            }
+        });
+
+        const result = await this.voucherModel.updateVoucher(input.id, updateData);
+
+        await this.notifyVoucherEvent('VOUCHER_UPDATED', {
+            voucher: result,
+            vendorId: existingVoucher.vendorId,
+            updatedBy: 'ADMIN'
+        });
+
+        return result;
+    }
+
+    async adminForceDeleteVoucher(id: string, reason: string): Promise<boolean> {
+        // Admin can force delete any voucher regardless of usage
+        const existingVoucher = await this.voucherModel.findVoucherById(id);
+        if (!existingVoucher) {
+            throw new GraphQLError('Voucher not found', { extensions: { code: 'NOT_FOUND' } });
+        }
+
+        await this.voucherModel.deleteVoucher(id);
+
+        await this.notifyVoucherEvent('VOUCHER_FORCE_DELETED', {
+            voucherId: id,
+            vendorId: existingVoucher.vendorId,
+            reason,
+            deletedBy: 'ADMIN'
+        });
+
+        return true;
+    }
+
+    async adminBulkUpdateVouchers(voucherIds: string[], updates: BulkVoucherUpdateInput): Promise<Voucher[]> {
+        if (voucherIds.length === 0) {
+            throw new GraphQLError('No voucher IDs provided', { extensions: { code: 'BAD_USER_INPUT' } });
+        }
+
+        const result = await this.voucherModel.bulkUpdateVouchers(voucherIds, updates);
+
+        await this.notifyVoucherEvent('VOUCHER_BULK_UPDATED', {
+            voucherIds,
+            updates,
+            count: result.length,
+            updatedBy: 'ADMIN'
+        });
+
+        return result;
+    }
+
+    async adminBulkDeactivateVouchers(voucherIds: string[], reason: string): Promise<number> {
+        if (voucherIds.length === 0) {
+            throw new GraphQLError('No voucher IDs provided', { extensions: { code: 'BAD_USER_INPUT' } });
+        }
+
+        const count = await this.voucherModel.bulkDeactivateVouchers(voucherIds, reason);
+
+        await this.notifyVoucherEvent('VOUCHER_BULK_DEACTIVATED', {
+            voucherIds,
+            reason,
+            count,
+            deactivatedBy: 'ADMIN'
+        });
+
+        return count;
+    }
+
+    async adminSuspendVendorVouchers(vendorId: string, reason: string, duration?: number): Promise<boolean> {
+        const result = await this.voucherModel.suspendVendorVouchers(vendorId, reason, duration);
+
+        await this.notifyVoucherEvent('VENDOR_VOUCHERS_SUSPENDED', {
+            vendorId,
+            reason,
+            duration,
+            suspendedBy: 'ADMIN'
+        });
+
+        return result;
+    }
+
+    async adminRestoreVendorVouchers(vendorId: string): Promise<boolean> {
+        const result = await this.voucherModel.restoreVendorVouchers(vendorId);
+
+        await this.notifyVoucherEvent('VENDOR_VOUCHERS_RESTORED', {
+            vendorId,
+            restoredBy: 'ADMIN'
+        });
+
+        return result;
+    }
+
+    async adminOverrideVoucherLimits(voucherId: string, newLimits: VoucherLimitOverride): Promise<Voucher> {
+        const existingVoucher = await this.voucherModel.findVoucherById(voucherId);
+        if (!existingVoucher) {
+            throw new GraphQLError('Voucher not found', { extensions: { code: 'NOT_FOUND' } });
+        }
+
+        const updateData: any = {};
+
+        if (newLimits.totalUsageLimit !== undefined) {
+            updateData.totalUsageLimit = newLimits.totalUsageLimit;
+        }
+
+        if (newLimits.usagePerUser !== undefined) {
+            updateData.usagePerUser = newLimits.usagePerUser;
+        }
+
+        if (newLimits.maxDiscountAmount !== undefined) {
+            updateData.maxDiscountAmount = String(newLimits.maxDiscountAmount);
+        }
+
+        if (newLimits.removeExpiryDate) {
+            // Set expiry to far future
+            updateData.validUntil = new Date('2099-12-31');
+        } else if (newLimits.extendExpiryDays) {
+            const currentExpiry = new Date(existingVoucher.validUntil);
+            currentExpiry.setDate(currentExpiry.getDate() + newLimits.extendExpiryDays);
+            updateData.validUntil = currentExpiry;
+        }
+
+        updateData.updatedAt = new Date();
+
+        const result = await this.voucherModel.updateVoucher(voucherId, updateData);
+
+        await this.notifyVoucherEvent('VOUCHER_LIMITS_OVERRIDDEN', {
+            voucher: result,
+            newLimits,
+            overriddenBy: 'ADMIN'
+        });
+
+        return result;
+    }
+
+    async adminMarkVoucherUsageAsFraud(usageId: string, reason: string, investigatorId: string): Promise<VoucherUsage> {
+        const result = await this.voucherModel.markVoucherUsageAsFraud(usageId, reason, investigatorId);
+
+        await this.notifyVoucherEvent('VOUCHER_USAGE_MARKED_FRAUD', {
+            usageId,
+            reason,
+            investigatorId
+        });
+
+        return result;
+    }
+
+    async adminRefundVoucherUsage(usageId: string, reason: string, refundAmount: number, processedBy: string): Promise<VoucherRefund> {
+        // TODO: Implement refund system
+        // This would typically involve:
+        // 1. Creating a refund record
+        // 2. Processing the actual refund through payment system
+        // 3. Updating voucher usage status
+
+        const refund: VoucherRefund = {
+            id: uuidv4(),
+            voucherUsageId: usageId,
+            refundAmount,
+            reason,
+            processedBy,
+            processedAt: new Date(),
+            status: 'PROCESSED',
+            voucherUsage: {} as VoucherUsage // Would be populated from DB
+        };
+
+        await this.notifyVoucherEvent('VOUCHER_USAGE_REFUNDED', {
+            refund,
+            processedBy
+        });
+
+        return refund;
+    }
+
+    async adminCleanupExpiredVouchers(daysOld: number): Promise<number> {
+        const deletedCount = await this.voucherModel.cleanupExpiredVouchers(daysOld);
+
+        await this.notifyVoucherEvent('EXPIRED_VOUCHERS_CLEANED', {
+            daysOld,
+            deletedCount,
+            cleanedBy: 'ADMIN'
+        });
+
+        return deletedCount;
+    }
+
+    async adminRecalculateVoucherStatistics(vendorId?: string): Promise<boolean> {
+        // TODO: Implement statistics recalculation
+        // This would typically involve:
+        // 1. Recalculating usage counts
+        // 2. Updating cached statistics
+        // 3. Fixing any data inconsistencies
+
+        await this.notifyVoucherEvent('VOUCHER_STATISTICS_RECALCULATED', {
+            vendorId,
+            recalculatedBy: 'ADMIN'
+        });
+
+        return true;
+    }
+
+    async adminCreateSystemPromotion(input: SystemPromotionInput): Promise<Voucher[]> {
+        const createdVouchers = await this.voucherModel.createSystemPromotionVouchers(input);
+
+        await this.notifyVoucherEvent('SYSTEM_PROMOTION_CREATED', {
+            promotion: input,
+            vouchersCreated: createdVouchers.length,
+            createdBy: 'ADMIN'
+        });
+
+        return createdVouchers;
+    }
+
+    async adminEmergencyDisableAllVouchers(reason: string): Promise<boolean> {
+        const result = await this.voucherModel.emergencyDisableAllVouchers(reason);
+
+        await this.notifyVoucherEvent('EMERGENCY_ALL_VOUCHERS_DISABLED', {
+            reason,
+            disabledBy: 'ADMIN',
+            timestamp: new Date()
+        });
+
+        return result;
+    }
+
+    async adminEmergencyEnableAllVouchers(): Promise<boolean> {
+        const result = await this.voucherModel.emergencyEnableAllVouchers();
+
+        await this.notifyVoucherEvent('EMERGENCY_ALL_VOUCHERS_ENABLED', {
+            enabledBy: 'ADMIN',
+            timestamp: new Date()
+        });
+
+        return result;
+    }
+
+    // Admin helper methods
+    private async requireAdminPermission(context?: any): Promise<void> {
+        // TODO: Implement proper admin permission checking
+        // This would typically check JWT tokens, roles, permissions, etc.
+        
+        if (!context?.isAdmin) {
+            throw new GraphQLError('Admin permission required', { 
+                extensions: { code: 'FORBIDDEN' } 
+            });
+        }
+    }
+
+    private async logAdminAction(action: string, adminId: string, details: any): Promise<void> {
+        // TODO: Implement admin action logging
+        // This would typically log to an audit trail system
+        
+        console.log(`ADMIN ACTION: ${action} by ${adminId}`, details);
     }
 }

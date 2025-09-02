@@ -8,6 +8,11 @@ export const VendorResolvers = {
     vendorProfile: vendorService.vendorProfile.bind(vendorService),
     pendingVendors: vendorService.pendingVendors.bind(vendorService),
     approvedVendors: vendorService.approvedVendors.bind(vendorService),
+    // Vendor Management Queries
+    vendorListAllVendors: vendorService.vendorListAllVendors.bind(vendorService),
+    vendorListAllUsers: vendorService.vendorListAllUsers.bind(vendorService),
+    vendorGetVendorById: vendorService.vendorGetVendorById.bind(vendorService),
+    vendorGetUserById: vendorService.vendorGetUserById.bind(vendorService),
   },
   Mutation: {
     vendorRegister: vendorService.vendorRegister.bind(vendorService),
@@ -22,5 +27,8 @@ export const VendorResolvers = {
     vendorResendOtp: vendorService.vendorResendOtp.bind(vendorService),
     vendorDeleteAccount: vendorService.vendorDeleteAccount.bind(vendorService),
     vendorApproval: vendorService.vendorApproval.bind(vendorService),
+    // Vendor Management Mutations
+    vendorUpdateVendorStatus: vendorService.vendorUpdateVendorStatus.bind(vendorService),
+    vendorVerifyUser: vendorService.vendorVerifyUser.bind(vendorService),
   },
 };

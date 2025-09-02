@@ -20,6 +20,15 @@ export class FarmhouseService {
     this.model = new FarmhouseModel(db);
   }
 
+  // Get all farmhouses (public - only available ones)
+  async getAllFarmhouses() {
+    return this.model.getAllFarmhouses();
+  }
+
+  // Get all farmhouses for admin (admin only - all farmhouses)
+  async getAllFarmhousesForAdmin() {
+    return this.model.getAllFarmhousesForAdmin();
+  }
   async getFarmhouseById(id: string) {
     const farmhouse = await this.model.getFarmhouseById(id);
     

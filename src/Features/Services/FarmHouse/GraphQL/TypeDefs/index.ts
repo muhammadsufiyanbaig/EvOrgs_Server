@@ -1,6 +1,3 @@
-
-// TYPE DEFS
-// Features/Farmhouse/TypeDefs/FarmhouseTypeDefs.ts
 import { gql } from 'apollo-server-express';
 
 export const farmhouseTypeDefs = gql`
@@ -91,8 +88,19 @@ export const farmhouseTypeDefs = gql`
   }
 
   type Query {
+    # Public access - only available farmhouses
+    farmhouses: [Farmhouse!]!
+    
+    # Get specific farmhouse by ID
     farmhouse(id: ID!): Farmhouse!
+    
+    # Admin access - all farmhouses regardless of availability
+    adminAllFarmhouses: [Farmhouse!]!
+    
+    # Vendor access - only their own farmhouses
     vendorFarmhouses(isAvailable: Boolean): [Farmhouse!]!
+    
+    # Search farmhouses with filters and pagination
     searchFarmhouses(input: SearchFarmhouseInput!): PaginatedFarmhouses!
   }
 

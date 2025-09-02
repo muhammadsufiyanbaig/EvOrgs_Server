@@ -779,4 +779,357 @@ export class AdService {
       return false;
     }
   }
+
+  // ==================== TIME SLOT MANAGEMENT ====================
+
+  async updateAdTimeSlots(adId: string, timeSlots: Array<{
+    startTime: string;
+    endTime: string;
+    daysOfWeek: number[];
+    priority: number;
+  }>, admin: Context['Admin']) {
+    if (!admin) {
+      throw new GraphQLError('Admin access required', {
+        extensions: { code: 'FORBIDDEN' }
+      });
+    }
+
+    // Validate time slots
+    for (const slot of timeSlots) {
+      if (!this.isValidTimeFormat(slot.startTime) || !this.isValidTimeFormat(slot.endTime)) {
+        throw new GraphQLError('Invalid time format. Use HH:MM format', {
+          extensions: { code: 'INVALID_INPUT' }
+        });
+      }
+
+      if (slot.startTime >= slot.endTime) {
+        throw new GraphQLError('Start time must be before end time', {
+          extensions: { code: 'INVALID_INPUT' }
+        });
+      }
+
+      if (!Array.isArray(slot.daysOfWeek) || slot.daysOfWeek.some(day => day < 0 || day > 6)) {
+        throw new GraphQLError('Invalid days of week. Use numbers 0-6 (Sunday-Saturday)', {
+          extensions: { code: 'INVALID_INPUT' }
+        });
+      }
+
+      if (slot.priority < 1 || slot.priority > 5) {
+        throw new GraphQLError('Priority must be between 1 (highest) and 5 (lowest)', {
+          extensions: { code: 'INVALID_INPUT' }
+        });
+      }
+    }
+
+    // Check if ad exists
+    const ad = await this.model.getAdById(adId);
+    if (!ad) {
+      throw new GraphQLError('Ad not found', {
+        extensions: { code: 'NOT_FOUND' }
+      });
+    }
+
+    // Update time slots
+    await this.model.updateTimeSlots(adId, timeSlots);
+
+    // Return updated ad with time slots
+    return await this.getAdWithTimeSlots(adId);
+  }
+
+  async getAvailableTimeSlots(date: string, adType?: string) {
+    if (!this.isValidDateFormat(date)) {
+      throw new GraphQLError('Invalid date format. Use YYYY-MM-DD format', {
+        extensions: { code: 'INVALID_INPUT' }
+      });
+    }
+
+    return await this.model.getAvailableTimeSlots(date, adType);
+  }
+
+  async scheduleAdRun(adId: string, timeSlotId: string, scheduledDate: string, admin: Context['Admin']) {
+    if (!admin) {
+      throw new GraphQLError('Admin access required', {
+        extensions: { code: 'FORBIDDEN' }
+      });
+    }
+
+    if (!this.isValidDateFormat(scheduledDate)) {
+      throw new GraphQLError('Invalid date format. Use YYYY-MM-DD format', {
+        extensions: { code: 'INVALID_INPUT' }
+      });
+    }
+
+    // Check if ad and time slot exist
+    const ad = await this.model.getAdById(adId);
+    if (!ad) {
+      throw new GraphQLError('Ad not found', {
+        extensions: { code: 'NOT_FOUND' }
+      });
+    }
+
+    const timeSlots = await this.model.getTimeSlotsByAdId(adId);
+    const timeSlot = timeSlots.find(ts => ts.id === timeSlotId);
+    if (!timeSlot) {
+      throw new GraphQLError('Time slot not found for this ad', {
+        extensions: { code: 'NOT_FOUND' }
+      });
+    }
+
+    // Check availability
+    const availability = await this.model.checkTimeSlotAvailability(
+      scheduledDate, 
+      timeSlot.startTime, 
+      timeSlot.endTime
+    );
+
+    if (!availability.isAvailable) {
+      throw new GraphQLError('Time slot is not available for the selected date', {
+        extensions: { 
+          code: 'CONFLICT',
+          conflictingAds: availability.conflictingAds
+        }
+      });
+    }
+
+    // Create schedule
+    const schedule = await this.model.createSchedule(adId, timeSlotId, scheduledDate);
+    return schedule[0];
+  }
+
+  async cancelScheduledRun(scheduleId: string, admin: Context['Admin']) {
+    if (!admin) {
+      throw new GraphQLError('Admin access required', {
+        extensions: { code: 'FORBIDDEN' }
+      });
+    }
+
+    const result = await this.model.cancelSchedule(scheduleId);
+    if (!result || result.length === 0) {
+      throw new GraphQLError('Schedule not found or already cancelled', {
+        extensions: { code: 'NOT_FOUND' }
+      });
+    }
+
+    return result[0];
+  }
+
+  async rescheduleAdRun(scheduleId: string, newDate: string, newTimeSlotId?: string, admin?: Context['Admin']) {
+    if (!admin) {
+      throw new GraphQLError('Admin access required', {
+        extensions: { code: 'FORBIDDEN' }
+      });
+    }
+
+    if (!this.isValidDateFormat(newDate)) {
+      throw new GraphQLError('Invalid date format. Use YYYY-MM-DD format', {
+        extensions: { code: 'INVALID_INPUT' }
+      });
+    }
+
+    const result = await this.model.rescheduleAd(scheduleId, newDate, newTimeSlotId);
+    if (!result || result.length === 0) {
+      throw new GraphQLError('Schedule not found', {
+        extensions: { code: 'NOT_FOUND' }
+      });
+    }
+
+    return result[0];
+  }
+
+  async getAdSchedules(adId?: string, status?: string, date?: string, admin?: Context['Admin']) {
+    if (!admin) {
+      throw new GraphQLError('Admin access required', {
+        extensions: { code: 'FORBIDDEN' }
+      });
+    }
+
+    if (adId) {
+      return await this.model.getSchedulesByAdId(adId, status, date);
+    } else {
+      return await this.model.getAllSchedules(status, date);
+    }
+  }
+
+  async getUpcomingSchedules(limit: number = 10) {
+    const schedules = await this.model.getAllSchedules('Scheduled', undefined, limit);
+    return schedules.map(s => s.schedule);
+  }
+
+  async getFailedSchedules(limit: number = 10) {
+    const schedules = await this.model.getAllSchedules('Failed', undefined, limit);
+    return schedules.map(s => s.schedule);
+  }
+
+  async retryFailedSchedule(scheduleId: string, admin: Context['Admin']) {
+    if (!admin) {
+      throw new GraphQLError('Admin access required', {
+        extensions: { code: 'FORBIDDEN' }
+      });
+    }
+
+    const result = await this.model.updateScheduleStatus(scheduleId, 'Scheduled', {
+      retryCount: 0,
+      nextRetry: null,
+      failureReason: null,
+    });
+
+    if (!result || result.length === 0) {
+      throw new GraphQLError('Schedule not found', {
+        extensions: { code: 'NOT_FOUND' }
+      });
+    }
+
+    return result[0];
+  }
+
+  async pauseAdSchedule(adId: string, admin: Context['Admin']) {
+    if (!admin) {
+      throw new GraphQLError('Admin access required', {
+        extensions: { code: 'FORBIDDEN' }
+      });
+    }
+
+    // Update all scheduled runs for this ad to paused
+    const schedules = await this.model.getSchedulesByAdId(adId, 'Scheduled');
+    const pausedSchedules = [];
+
+    for (const schedule of schedules) {
+      const result = await this.model.updateScheduleStatus(schedule.schedule.id, 'Paused');
+      pausedSchedules.push(result[0]);
+    }
+
+    // Return updated ad
+    return await this.getAdWithTimeSlots(adId);
+  }
+
+  async resumeAdSchedule(adId: string, admin: Context['Admin']) {
+    if (!admin) {
+      throw new GraphQLError('Admin access required', {
+        extensions: { code: 'FORBIDDEN' }
+      });
+    }
+
+    // Update all paused runs for this ad to scheduled
+    const schedules = await this.model.getSchedulesByAdId(adId, 'Paused');
+    const resumedSchedules = [];
+
+    for (const schedule of schedules) {
+      const result = await this.model.updateScheduleStatus(schedule.schedule.id, 'Scheduled');
+      resumedSchedules.push(result[0]);
+    }
+
+    // Return updated ad
+    return await this.getAdWithTimeSlots(adId);
+  }
+
+  async bulkScheduleAds(adIds: string[], timeSlots: Array<{
+    startTime: string;
+    endTime: string;
+    daysOfWeek: number[];
+    priority: number;
+  }>, dateRange: string, admin: Context['Admin']) {
+    if (!admin) {
+      throw new GraphQLError('Admin access required', {
+        extensions: { code: 'FORBIDDEN' }
+      });
+    }
+
+    const schedules = [];
+    const [startDate, endDate] = dateRange.split(',');
+
+    if (!this.isValidDateFormat(startDate) || !this.isValidDateFormat(endDate)) {
+      throw new GraphQLError('Invalid date range format. Use YYYY-MM-DD,YYYY-MM-DD', {
+        extensions: { code: 'INVALID_INPUT' }
+      });
+    }
+
+    for (const adId of adIds) {
+      // Update time slots for each ad
+      await this.model.updateTimeSlots(adId, timeSlots);
+      
+      // Create schedules for each day in the range
+      const start = new Date(startDate);
+      const end = new Date(endDate);
+      
+      for (let date = start; date <= end; date.setDate(date.getDate() + 1)) {
+        const dateString = date.toISOString().split('T')[0];
+        const dayOfWeek = date.getDay();
+        
+        // Check if any time slot applies to this day
+        for (const slot of timeSlots) {
+          if (slot.daysOfWeek.includes(dayOfWeek)) {
+            try {
+              // Find the time slot ID for this ad
+              const adTimeSlots = await this.model.getTimeSlotsByAdId(adId);
+              const matchingSlot = adTimeSlots.find(ts => 
+                ts.startTime === slot.startTime && 
+                ts.endTime === slot.endTime
+              );
+              
+              if (matchingSlot) {
+                const schedule = await this.model.createSchedule(adId, matchingSlot.id, dateString);
+                schedules.push(schedule[0]);
+              }
+            } catch (error) {
+              console.error(`Failed to schedule ad ${adId} for ${dateString}:`, error);
+            }
+          }
+        }
+      }
+    }
+
+    return schedules;
+  }
+
+  // ==================== ENHANCED APPROVE WITH TIME SLOTS ====================
+
+  async approveAdRequestWithTimeSlots(id: string, input: {
+    finalPrice: number;
+    adminStartDate: string;
+    adminEndDate: string;
+    adminNotes?: string;
+    timeSlots: Array<{
+      startTime: string;
+      endTime: string;
+      daysOfWeek: number[];
+      priority: number;
+    }>;
+  }, admin: Context['Admin']) {
+    if (!admin) {
+      throw new GraphQLError('Admin access required', {
+        extensions: { code: 'FORBIDDEN' }
+      });
+    }
+
+    // First approve the ad request
+    const approvedAd = await this.approveAdRequest(id, input, admin);
+    
+    // Then add time slots
+    await this.model.createTimeSlots(approvedAd.id, input.timeSlots);
+    
+    // Return ad with time slots
+    return await this.getAdWithTimeSlots(approvedAd.id);
+  }
+
+  // ==================== HELPER METHODS ====================
+
+  private async getAdWithTimeSlots(adId: string) {
+    const performance = await this.model.getAdPerformanceWithSchedule(adId);
+    return {
+      ...performance.ad,
+      timeSlots: performance.timeSlots,
+      currentSchedule: performance.schedules.find(s => s.schedule.status === 'Running')?.schedule || null,
+      totalScheduledRuns: performance.statistics.totalRuns,
+      successfulRuns: performance.statistics.successfulRuns,
+      failedRuns: performance.statistics.failedRuns,
+    };
+  }
+
+  private isValidTimeFormat(time: string): boolean {
+    return /^([01]?[0-9]|2[0-3]):[0-5][0-9]$/.test(time);
+  }
+
+  private isValidDateFormat(date: string): boolean {
+    return /^\d{4}-\d{2}-\d{2}$/.test(date) && !isNaN(Date.parse(date));
+  }
 }

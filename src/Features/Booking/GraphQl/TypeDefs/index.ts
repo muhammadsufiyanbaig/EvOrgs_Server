@@ -206,6 +206,18 @@ export const BookingTypeDefs = gql`
     
     # Get all bookings (admin only)
     allBookings(filters: BookingFiltersInput): [Booking!]!
+
+    # Get vendor visiting requests (vendor only)
+    vendorVisitingRequests(filters: BookingFiltersInput): [Booking!]!
+    
+    # Get vendor scheduled visits (vendor only)
+    vendorScheduledVisits(filters: BookingFiltersInput): [Booking!]!
+    
+    # Get all visiting requests (admin only)
+    allVisitingRequests(filters: BookingFiltersInput): [Booking!]!
+    
+    # Get all scheduled visits (admin only)
+    allScheduledVisits(filters: BookingFiltersInput): [Booking!]!
   }
 
   # Mutations

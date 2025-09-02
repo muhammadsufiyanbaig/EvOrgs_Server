@@ -1,7 +1,6 @@
-// src/Features/Photography/Resolvers/index.ts
 import { AuthenticationError, ForbiddenError, UserInputError } from 'apollo-server-express';
 import { customPhotographyService } from '../../Service';
-import { CreateCustomOrderInput, QuoteOrderInput, SearchOrdersInput } from '../../Types';
+import { CreateCustomOrderInput, QuoteOrderInput, SearchOrdersInput, AdminCustomOrderFilters, CustomOrderListResponse } from '../../Types';
 import { Context } from '../../../../../../GraphQL/Context';
 
 export const customPhotographyResolver = {
@@ -47,6 +46,33 @@ export const customPhotographyResolver = {
 
             const orderService = new customPhotographyService(context.db);
             return orderService.searchOrders(input, context.vendor.id);
+        },
+
+        // Admin Query: Get all custom orders with filters and pagination
+        adminGetAllCustomOrders: async (_: any, { filters }: { filters?: AdminCustomOrderFilters }, context: Context): Promise<CustomOrderListResponse> => {
+            if (!context.Admin) {
+                throw new AuthenticationError('Admin authentication required');
+            }
+
+            const orderService = new customPhotographyService(context.db);
+            return orderService.getAllOrdersForAdmin(filters);
+        },
+
+        // Admin Query: Get a specific custom order by ID
+        adminGetCustomOrder: async (_: any, { orderId }: { orderId: string }, context: Context) => {
+            if (!context.Admin) {
+                throw new AuthenticationError('Admin authentication required');
+            }
+
+            const orderService = new customPhotographyService(context.db);
+            try {
+                return await orderService.getOrderByIdForAdmin(orderId);
+            } catch (error: unknown) {
+                if (error instanceof Error) {
+                    throw new ForbiddenError(error.message);
+                }
+                throw new ForbiddenError('An unknown error occurred');
+            }
         },
     },
 
@@ -101,6 +127,40 @@ export const customPhotographyResolver = {
             const orderService = new customPhotographyService(context.db);
             try {
                 return await orderService.quoteOrder(input, context.vendor.id);
+            } catch (error: unknown) {
+                if (error instanceof Error) {
+                    throw new ForbiddenError(error.message);
+                }
+                throw new ForbiddenError('An unknown error occurred');
+            }
+        },
+
+        // Admin Mutation: Update order status
+        adminUpdateOrderStatus: async (_: any, { orderId, status }: { orderId: string; status: 'Requested' | 'Quoted' | 'Accepted' | 'Rejected' }, context: Context) => {
+            if (!context.Admin) {
+                throw new AuthenticationError('Admin authentication required');
+            }
+
+            const orderService = new customPhotographyService(context.db);
+            try {
+                return await orderService.updateOrderStatusByAdmin(orderId, status);
+            } catch (error: unknown) {
+                if (error instanceof Error) {
+                    throw new ForbiddenError(error.message);
+                }
+                throw new ForbiddenError('An unknown error occurred');
+            }
+        },
+
+        // Admin Mutation: Delete order
+        adminDeleteOrder: async (_: any, { orderId }: { orderId: string }, context: Context): Promise<boolean> => {
+            if (!context.Admin) {
+                throw new AuthenticationError('Admin authentication required');
+            }
+
+            const orderService = new customPhotographyService(context.db);
+            try {
+                return await orderService.deleteOrderByAdmin(orderId);
             } catch (error: unknown) {
                 if (error instanceof Error) {
                     throw new ForbiddenError(error.message);

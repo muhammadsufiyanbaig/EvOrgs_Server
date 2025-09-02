@@ -17,7 +17,15 @@ export const farmhouseResolvers = {
       const farmhouseService = new FarmhouseService(context.db);
       return farmhouseService.getFarmhouseById(id);
     },
+// Get all farmhouses for admin (admin only - all farmhouses regardless of availability)
+    adminAllFarmhouses: async (_: any, __: any, context: Context) => {
+      if (!context.Admin) {
+        throw new Error('Admin authentication required');
+      }
 
+      const farmhouseService = new FarmhouseService(context.db);
+      return farmhouseService.getAllFarmhousesForAdmin();
+    },
     // Get all farmhouses for a vendor (vendor-only)
     vendorFarmhouses: async (_: any, { isAvailable }: { isAvailable?: boolean }, context: Context) => {
       // Check if vendor is authenticated

@@ -110,11 +110,68 @@ export const VendorTypeDefs = gql`
     message: String
   }
 
+  # Vendor Management Types
+  input VendorUpdateStatusInput {
+    vendorId: ID!
+    status: VendorStatus!
+    message: String
+  }
+
+  # Import types from User schema for vendor management
+  type User {
+    id: ID!
+    firstName: String!
+    lastName: String!
+    email: String!
+    phone: String
+    address: String
+    fcmToken: [String]
+    profileImage: String
+    dateOfBirth: Date
+    gender: String!
+    createdAt: Date!
+    isVerified: Boolean!
+  }
+
+  type UserListResponse {
+    users: [User!]!
+    total: Int!
+    page: Int!
+    limit: Int!
+    totalPages: Int!
+  }
+
+  type VendorListResponse {
+    vendors: [Vendor!]!
+    total: Int!
+    page: Int!
+    limit: Int!
+    totalPages: Int!
+  }
+
+  input ListUsersInput {
+    page: Int = 1
+    limit: Int = 10
+    search: String
+  }
+
+  input ListVendorsInput {
+    page: Int = 1
+    limit: Int = 10
+    search: String
+    status: VendorStatus
+    vendorType: VendorType
+  }
+
   extend type Query {
-    vendor(id: ID!): Vendor
     vendorProfile: Vendor
-    pendingVendors: [Vendor!]!
-    approvedVendors: [Vendor!]!
+    vendor(id: ID!): Vendor
+    pendingVendors: [Vendor]
+    # Vendor Management Queries
+    vendorListAllVendors(input: ListVendorsInput): VendorListResponse!
+    vendorListAllUsers(input: ListUsersInput): UserListResponse!
+    vendorGetVendorById(vendorId: ID!): Vendor
+    vendorGetUserById(userId: ID!): User
   }
 
   extend type Mutation {
@@ -130,5 +187,8 @@ export const VendorTypeDefs = gql`
     vendorResendOtp(input: VendorResendOtpInput!): Boolean!
     vendorDeleteAccount: Boolean!
     vendorApproval(input: VendorApprovalInput!): Vendor!
+    # Vendor Management Mutations
+    vendorUpdateVendorStatus(input: VendorUpdateStatusInput!): Boolean!
+    vendorVerifyUser(userId: ID!): Boolean!
   }
 `;

@@ -91,3 +91,20 @@ export interface VendorApprovalInput {
   status: "Pending" | "Approved" | "Rejected";
   message?: string;
 } 
+
+// Admin specific types for vendor management
+export interface ListVendorsInput {
+  page?: number;
+  limit?: number;
+  search?: string;
+  status?: "Pending" | "Approved" | "Rejected";
+  vendorType?: "FarmHouse" | "Venue" | "Catering" | "Photography";
+}
+
+export interface VendorListResponse {
+  vendors: Vendor[];
+  total: number;
+  page: number;
+  limit: number;
+  totalPages: number;
+} 

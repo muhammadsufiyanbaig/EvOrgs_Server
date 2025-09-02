@@ -11,6 +11,7 @@
   "license": "ISC",
   "description": "",
   "dependencies": {
+    "@apollo/client": "^4.0.0",
     "@apollo/server": "^4.11.3",
     "@neondatabase/serverless": "^0.10.4",
     "apollo-server-express": "^3.13.0",
@@ -19,8 +20,9 @@
     "dotenv": "^16.4.7",
     "drizzle-orm": "^0.40.0",
     "express": "^4.21.2",
-    "graphql": "^16.10.0",
+    "graphql": "^16.11.0",
     "graphql-tag": "^2.12.6",
+    "graphql-type-json": "^0.3.2",
     "jsonwebtoken": "^9.0.2",
     "node-cron": "^4.1.0",
     "nodemailer": "^6.10.1",
@@ -39,6 +41,6 @@
     "drizzle-kit": "^0.30.5",
     "nodemon": "^3.1.9",
     "ts-node": "^10.9.2",
-    "typescript": "^5.8.2"
+    "typescript": "^5.9.2"
   }
 }

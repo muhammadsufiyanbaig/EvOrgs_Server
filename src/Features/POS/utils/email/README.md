@@ -238,10 +238,8 @@ const resolvers = {
 
 ### With Background Jobs
 ```typescript
-import cron from 'node-cron';
-
-// Send payment reminders daily at 9 AM
-cron.schedule('0 9 * * *', async () => {
+// Example: Process payment reminders in background
+const processPaymentReminders = async () => {
   const overduePayments = await getOverduePayments();
   
   for (const payment of overduePayments) {
@@ -252,7 +250,10 @@ cron.schedule('0 9 * * *', async () => {
       dueDate: payment.dueDate
     });
   }
-});
+};
+
+// Call this function when needed, e.g., through API endpoint
+// or triggered by business logic
 ```
 
 ## 🚀 Production Considerations

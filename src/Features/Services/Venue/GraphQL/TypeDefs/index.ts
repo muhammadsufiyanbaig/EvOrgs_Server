@@ -48,10 +48,21 @@ export const venueTypeDefs = gql`
     rating: Float
     reviewCount: Int
   }
+
   type Query {
+    # Public access - only available venues
     venues: [Venue!]!
+    
+    # Get specific venue by ID
     venue(id: ID!): Venue
+    
+    # Admin access - all venues regardless of availability/status
+    adminAllVenues: [Venue!]!
+    
+    # Vendor access - only their own venues
     vendorVenues: [Venue!]!
+    
+    # Search venues with filters
     searchVenues(
       tags: [String!], 
       minPrice: String, 

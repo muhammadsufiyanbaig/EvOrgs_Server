@@ -1,0 +1,334 @@
+# ===================================
+# POS TRANSACTION MUTATIONS
+# ===================================
+
+# Create a new transaction
+mutation CreateTransaction($input: CreateTransactionInput!) {
+  createTransaction(input: $input) {
+    id
+    vendorId
+    bookingId
+    userId
+    transactionNumber
+    amount
+    transactionType
+    paymentMethod
+    description
+    receiptNumber
+    paymentGatewayReference
+    status
+    createdAt
+    processedAt
+    updatedAt
+    vendor {
+      id
+      businessName
+      email
+    }
+    booking {
+      id
+      eventDate
+      totalAmount
+      bookingStatus
+      user {
+        id
+        firstName
+        lastName
+        email
+      }
+    }
+  }
+}
+
+# Update an existing transaction
+mutation UpdateTransaction($input: UpdateTransactionInput!) {
+  updateTransaction(input: $input) {
+    id
+    vendorId
+    bookingId
+    userId
+    transactionNumber
+    amount
+    transactionType
+    paymentMethod
+    description
+    receiptNumber
+    paymentGatewayReference
+    status
+    createdAt
+    processedAt
+    updatedAt
+    vendor {
+      id
+      businessName
+      email
+    }
+    booking {
+      id
+      eventDate
+      totalAmount
+      bookingStatus
+      user {
+        id
+        firstName
+        lastName
+        email
+      }
+    }
+  }
+}
+
+# Process a transaction
+mutation ProcessTransaction($id: ID!) {
+  processTransaction(id: $id) {
+    id
+    vendorId
+    bookingId
+    userId
+    transactionNumber
+    amount
+    transactionType
+    paymentMethod
+    description
+    receiptNumber
+    paymentGatewayReference
+    status
+    createdAt
+    processedAt
+    updatedAt
+    vendor {
+      id
+      businessName
+      email
+    }
+    booking {
+      id
+      eventDate
+      totalAmount
+      bookingStatus
+      user {
+        id
+        firstName
+        lastName
+        email
+      }
+    }
+  }
+}
+
+# Delete a transaction
+mutation DeleteTransaction($id: ID!) {
+  deleteTransaction(id: $id)
+}
+
+# ===================================
+# PAYMENT SCHEDULE MUTATIONS
+# ===================================
+
+# Create a new payment schedule
+mutation CreatePaymentSchedule($input: CreatePaymentScheduleInput!) {
+  createPaymentSchedule(input: $input) {
+    id
+    bookingId
+    dueDate
+    amount
+    description
+    status
+    reminderSent
+    lastReminderDate
+    transactionId
+    createdAt
+    updatedAt
+    booking {
+      id
+      eventDate
+      totalAmount
+      bookingStatus
+      user {
+        id
+        firstName
+        lastName
+        email
+      }
+    }
+  }
+}
+
+# Update an existing payment schedule
+mutation UpdatePaymentSchedule($input: UpdatePaymentScheduleInput!) {
+  updatePaymentSchedule(input: $input) {
+    id
+    bookingId
+    dueDate
+    amount
+    description
+    status
+    reminderSent
+    lastReminderDate
+    transactionId
+    createdAt
+    updatedAt
+    booking {
+      id
+      eventDate
+      totalAmount
+      bookingStatus
+      user {
+        id
+        firstName
+        lastName
+        email
+      }
+    }
+    transaction {
+      id
+      transactionNumber
+      amount
+      status
+    }
+  }
+}
+
+# Delete a payment schedule
+mutation DeletePaymentSchedule($id: ID!) {
+  deletePaymentSchedule(id: $id)
+}
+
+# Mark payment as paid
+mutation MarkPaymentAsPaid($id: ID!, $transactionId: ID) {
+  markPaymentAsPaid(id: $id, transactionId: $transactionId) {
+    id
+    bookingId
+    dueDate
+    amount
+    description
+    status
+    reminderSent
+    lastReminderDate
+    transactionId
+    createdAt
+    updatedAt
+    booking {
+      id
+      eventDate
+      totalAmount
+      user {
+        id
+        firstName
+        lastName
+        email
+      }
+    }
+    transaction {
+      id
+      transactionNumber
+      amount
+      transactionType
+      paymentMethod
+      status
+      createdAt
+    }
+  }
+}
+
+# Send payment reminder
+mutation SendPaymentReminder($id: ID!) {
+  sendPaymentReminder(id: $id) {
+    id
+    bookingId
+    dueDate
+    amount
+    description
+    status
+    reminderSent
+    lastReminderDate
+    transactionId
+    createdAt
+    updatedAt
+    booking {
+      id
+      eventDate
+      totalAmount
+      user {
+        id
+        firstName
+        lastName
+        email
+      }
+    }
+  }
+}
+
+# ===================================
+# EXPENSE MUTATIONS
+# ===================================
+
+# Create a new expense
+mutation CreateExpense($input: CreateServiceExpenseInput!) {
+  createExpense(input: $input) {
+    id
+    bookingId
+    vendorId
+    description
+    amount
+    category
+    receiptUrl
+    expenseDate
+    createdAt
+    updatedAt
+    booking {
+      id
+      eventDate
+      totalAmount
+      bookingStatus
+      user {
+        id
+        firstName
+        lastName
+        email
+      }
+    }
+    vendor {
+      id
+      businessName
+      email
+    }
+  }
+}
+
+# Update an existing expense
+mutation UpdateExpense($input: UpdateServiceExpenseInput!) {
+  updateExpense(input: $input) {
+    id
+    bookingId
+    vendorId
+    description
+    amount
+    category
+    receiptUrl
+    expenseDate
+    createdAt
+    updatedAt
+    booking {
+      id
+      eventDate
+      totalAmount
+      user {
+        id
+        firstName
+        lastName
+        email
+      }
+    }
+    vendor {
+      id
+      businessName
+      email
+    }
+  }
+}
+
+# Delete an expense
+mutation DeleteExpense($id: ID!) {
+  deleteExpense(id: $id)
+}

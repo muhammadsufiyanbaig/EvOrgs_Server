@@ -493,6 +493,57 @@ export const adPayments = pgTable("ad_payments", {
     updatedAt: timestamp("updated_at").defaultNow(),
 });
 
+// AD TIME SLOTS TABLE
+export const adTimeSlots = pgTable("ad_time_slots", {
+    id: uuid("id").primaryKey(),
+    adId: uuid("ad_id").references(() => servicesAds.id, { onDelete: "cascade" }).notNull(),
+    startTime: varchar("start_time", { length: 5 }).notNull(), // Format: "HH:MM"
+    endTime: varchar("end_time", { length: 5 }).notNull(),     // Format: "HH:MM"
+    daysOfWeek: jsonb("days_of_week").$type<number[]>().notNull(), // [0,1,2,3,4,5,6] for Sunday-Saturday
+    priority: integer("priority").notNull().default(5), // 1 = highest, 5 = lowest
+    isActive: boolean("is_active").default(true),
+    createdAt: timestamp("created_at").defaultNow(),
+    updatedAt: timestamp("updated_at").defaultNow(),
+});
+
+// AD SCHEDULES TABLE - Tracks when ads are scheduled to run
+export const adSchedules = pgTable("ad_schedules", {
+    id: uuid("id").primaryKey(),
+    adId: uuid("ad_id").references(() => servicesAds.id, { onDelete: "cascade" }).notNull(),
+    timeSlotId: uuid("time_slot_id").references(() => adTimeSlots.id, { onDelete: "cascade" }).notNull(),
+    scheduledDate: date("scheduled_date").notNull(),
+    scheduledDateTime: timestamp("scheduled_date_time").notNull(), // Combination of date + time slot
+    status: varchar("status", { length: 20 }).default("Scheduled").$type<"Scheduled" | "Running" | "Completed" | "Failed" | "Cancelled" | "Paused">(),
+    executedAt: timestamp("executed_at"),
+    completedAt: timestamp("completed_at"),
+    failureReason: text("failure_reason"),
+    retryCount: integer("retry_count").default(0),
+    maxRetries: integer("max_retries").default(3),
+    nextRetry: timestamp("next_retry"),
+    metadata: jsonb("metadata").$type<Record<string, any>>(), // Store additional scheduling info
+    createdAt: timestamp("created_at").defaultNow(),
+    updatedAt: timestamp("updated_at").defaultNow(),
+});
+
+// AD EXECUTION LOGS TABLE - Detailed logs of ad executions
+export const adExecutionLogs = pgTable("ad_execution_logs", {
+    id: uuid("id").primaryKey(),
+    scheduleId: uuid("schedule_id").references(() => adSchedules.id, { onDelete: "cascade" }).notNull(),
+    adId: uuid("ad_id").references(() => servicesAds.id, { onDelete: "cascade" }).notNull(),
+    action: varchar("action", { length: 50 }).notNull().$type<"START" | "STOP" | "PAUSE" | "RESUME" | "ERROR" | "RETRY">(),
+    status: varchar("status", { length: 20 }).notNull().$type<"SUCCESS" | "FAILED" | "PENDING">(),
+    message: text("message"),
+    errorDetails: jsonb("error_details").$type<Record<string, any>>(),
+    performanceMetrics: jsonb("performance_metrics").$type<{
+        impressions?: number;
+        clicks?: number;
+        conversions?: number;
+        revenue?: number;
+        duration?: number;
+    }>(),
+    createdAt: timestamp("created_at").defaultNow(),
+});
+
 /* ===================== CHAT MANAGEMENT ===================== */
 
 // CHATS TABLE

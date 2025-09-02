@@ -1,6 +1,5 @@
 
-
-import { and, eq, gte, lte, desc } from 'drizzle-orm';
+import { and, eq, gte, lte, desc, or } from 'drizzle-orm';
 import { DrizzleDB } from '../../../Config/db';
 import { 
   bookings,
@@ -10,12 +9,14 @@ import {
   farmhouseAvailability,
   cateringPackages,
   photographyPackages,
-  vendors
+  vendors,
+  users
 } from '../../../Schema';
 import { 
   Booking, 
   ServiceType,
-  BookingFiltersInput
+  BookingFiltersInput,
+  VisitStatus
 } from '../Types';
 
 /**
@@ -296,5 +297,285 @@ export class BookingModel {
       .offset(offset);
     
     return bookingRecords as unknown as Booking[];
+  }
+
+  /**
+   * Get visiting requests for a vendor (requests that need vendor response)
+   */
+  async getVendorVisitingRequests(vendorId: string, filters: BookingFiltersInput = {}): Promise<any[]> {
+    const limit = filters.limit || 10;
+    const offset = filters.offset || 0;
+    
+    // Build where conditions
+    const conditions = [
+      eq(bookings.vendorId, vendorId),
+      eq(bookings.visitRequested, true),
+      eq(bookings.visitStatus, 'Requested' as VisitStatus)
+    ];
+
+    // Add date filters if provided
+    if (filters.from) {
+      conditions.push(gte(bookings.createdAt, new Date(filters.from)));
+    }
+    if (filters.to) {
+      conditions.push(lte(bookings.createdAt, new Date(filters.to)));
+    }
+
+    // Add service type filter if provided
+    if (filters.serviceType) {
+      conditions.push(eq(bookings.serviceType, filters.serviceType));
+    }
+
+    const result = await this.db.select({
+      // Booking details
+      id: bookings.id,
+      userId: bookings.userId,
+      vendorId: bookings.vendorId,
+      serviceType: bookings.serviceType,
+      serviceId: bookings.serviceId,
+      eventDate: bookings.eventDate,
+      eventStartTime: bookings.eventStartTime,
+      eventEndTime: bookings.eventEndTime,
+      numberOfGuests: bookings.numberOfGuests,
+      totalAmount: bookings.totalAmount,
+      status: bookings.status,
+      paymentStatus: bookings.paymentStatus,
+      visitRequested: bookings.visitRequested,
+      visitStatus: bookings.visitStatus,
+      visitScheduledFor: bookings.visitScheduledFor,
+      specialRequests: bookings.specialRequests,
+      createdAt: bookings.createdAt,
+      updatedAt: bookings.updatedAt,
+      bookingReference: bookings.bookingReference,
+      // User details
+      userName: users.firstName,
+      userLastName: users.lastName,
+      userEmail: users.email,
+      userPhone: users.phone
+    })
+    .from(bookings)
+    .leftJoin(users, eq(bookings.userId, users.id))
+    .where(and(...conditions))
+    .orderBy(desc(bookings.createdAt))
+    .limit(limit)
+    .offset(offset);
+
+    return result;
+  }
+
+  /**
+   * Get scheduled visits for a vendor
+   */
+  async getVendorScheduledVisits(vendorId: string, filters: BookingFiltersInput = {}): Promise<any[]> {
+    const limit = filters.limit || 10;
+    const offset = filters.offset || 0;
+    
+    // Build where conditions
+    const conditions = [
+      eq(bookings.vendorId, vendorId),
+      eq(bookings.visitRequested, true),
+      or(
+        eq(bookings.visitStatus, 'Scheduled' as VisitStatus),
+        eq(bookings.visitStatus, 'Completed' as VisitStatus)
+      )
+    ];
+
+    // Add date filters if provided
+    if (filters.from) {
+      conditions.push(gte(bookings.visitScheduledFor, new Date(filters.from)));
+    }
+    if (filters.to) {
+      conditions.push(lte(bookings.visitScheduledFor, new Date(filters.to)));
+    }
+
+    // Add service type filter if provided
+    if (filters.serviceType) {
+      conditions.push(eq(bookings.serviceType, filters.serviceType));
+    }
+
+    const result = await this.db.select({
+      // Booking details
+      id: bookings.id,
+      userId: bookings.userId,
+      vendorId: bookings.vendorId,
+      serviceType: bookings.serviceType,
+      serviceId: bookings.serviceId,
+      eventDate: bookings.eventDate,
+      eventStartTime: bookings.eventStartTime,
+      eventEndTime: bookings.eventEndTime,
+      numberOfGuests: bookings.numberOfGuests,
+      totalAmount: bookings.totalAmount,
+      status: bookings.status,
+      paymentStatus: bookings.paymentStatus,
+      visitRequested: bookings.visitRequested,
+      visitStatus: bookings.visitStatus,
+      visitScheduledFor: bookings.visitScheduledFor,
+      specialRequests: bookings.specialRequests,
+      createdAt: bookings.createdAt,
+      updatedAt: bookings.updatedAt,
+      bookingReference: bookings.bookingReference,
+      // User details
+      userName: users.firstName,
+      userLastName: users.lastName,
+      userEmail: users.email,
+      userPhone: users.phone
+    })
+    .from(bookings)
+    .leftJoin(users, eq(bookings.userId, users.id))
+    .where(and(...conditions))
+    .orderBy(desc(bookings.visitScheduledFor))
+    .limit(limit)
+    .offset(offset);
+
+    return result;
+  }
+
+  /**
+   * Get all visiting requests for admin
+   */
+  async getAllVisitingRequests(filters: BookingFiltersInput = {}): Promise<any[]> {
+    const limit = filters.limit || 20;
+    const offset = filters.offset || 0;
+    
+    // Build where conditions
+    const conditions = [
+      eq(bookings.visitRequested, true),
+      eq(bookings.visitStatus, 'Requested' as VisitStatus)
+    ];
+
+    // Add date filters if provided
+    if (filters.from) {
+      conditions.push(gte(bookings.createdAt, new Date(filters.from)));
+    }
+    if (filters.to) {
+      conditions.push(lte(bookings.createdAt, new Date(filters.to)));
+    }
+
+    // Add service type filter if provided
+    if (filters.serviceType) {
+      conditions.push(eq(bookings.serviceType, filters.serviceType));
+    }
+
+    // Add booking status filter if provided
+    if (filters.status) {
+      conditions.push(eq(bookings.status, filters.status));
+    }
+
+    const result = await this.db.select({
+      // Booking details
+      id: bookings.id,
+      userId: bookings.userId,
+      vendorId: bookings.vendorId,
+      serviceType: bookings.serviceType,
+      serviceId: bookings.serviceId,
+      eventDate: bookings.eventDate,
+      eventStartTime: bookings.eventStartTime,
+      eventEndTime: bookings.eventEndTime,
+      numberOfGuests: bookings.numberOfGuests,
+      totalAmount: bookings.totalAmount,
+      status: bookings.status,
+      paymentStatus: bookings.paymentStatus,
+      visitRequested: bookings.visitRequested,
+      visitStatus: bookings.visitStatus,
+      visitScheduledFor: bookings.visitScheduledFor,
+      specialRequests: bookings.specialRequests,
+      createdAt: bookings.createdAt,
+      updatedAt: bookings.updatedAt,
+      bookingReference: bookings.bookingReference,
+      // User details
+      userName: users.firstName,
+      userLastName: users.lastName,
+      userEmail: users.email,
+      userPhone: users.phone,
+      // Vendor details
+      vendorName: vendors.vendorName,
+      vendorEmail: vendors.vendorEmail,
+      vendorPhone: vendors.vendorPhone
+    })
+    .from(bookings)
+    .leftJoin(users, eq(bookings.userId, users.id))
+    .leftJoin(vendors, eq(bookings.vendorId, vendors.id))
+    .where(and(...conditions))
+    .orderBy(desc(bookings.createdAt))
+    .limit(limit)
+    .offset(offset);
+
+    return result;
+  }
+
+  /**
+   * Get all scheduled visits for admin
+   */
+  async getAllScheduledVisits(filters: BookingFiltersInput = {}): Promise<any[]> {
+    const limit = filters.limit || 20;
+    const offset = filters.offset || 0;
+    
+    // Build where conditions
+    const conditions = [
+      eq(bookings.visitRequested, true),
+      or(
+        eq(bookings.visitStatus, 'Scheduled' as VisitStatus),
+        eq(bookings.visitStatus, 'Completed' as VisitStatus)
+      )
+    ];
+
+    // Add date filters if provided
+    if (filters.from) {
+      conditions.push(gte(bookings.visitScheduledFor, new Date(filters.from)));
+    }
+    if (filters.to) {
+      conditions.push(lte(bookings.visitScheduledFor, new Date(filters.to)));
+    }
+
+    // Add service type filter if provided
+    if (filters.serviceType) {
+      conditions.push(eq(bookings.serviceType, filters.serviceType));
+    }
+
+    // Add booking status filter if provided
+    if (filters.status) {
+      conditions.push(eq(bookings.status, filters.status));
+    }
+
+    const result = await this.db.select({
+      // Booking details
+      id: bookings.id,
+      userId: bookings.userId,
+      vendorId: bookings.vendorId,
+      serviceType: bookings.serviceType,
+      serviceId: bookings.serviceId,
+      eventDate: bookings.eventDate,
+      eventStartTime: bookings.eventStartTime,
+      eventEndTime: bookings.eventEndTime,
+      numberOfGuests: bookings.numberOfGuests,
+      totalAmount: bookings.totalAmount,
+      status: bookings.status,
+      paymentStatus: bookings.paymentStatus,
+      visitRequested: bookings.visitRequested,
+      visitStatus: bookings.visitStatus,
+      visitScheduledFor: bookings.visitScheduledFor,
+      specialRequests: bookings.specialRequests,
+      createdAt: bookings.createdAt,
+      updatedAt: bookings.updatedAt,
+      bookingReference: bookings.bookingReference,
+      // User details
+      userName: users.firstName,
+      userLastName: users.lastName,
+      userEmail: users.email,
+      userPhone: users.phone,
+      // Vendor details
+      vendorName: vendors.vendorName,
+      vendorEmail: vendors.vendorEmail,
+      vendorPhone: vendors.vendorPhone
+    })
+    .from(bookings)
+    .leftJoin(users, eq(bookings.userId, users.id))
+    .leftJoin(vendors, eq(bookings.vendorId, vendors.id))
+    .where(and(...conditions))
+    .orderBy(desc(bookings.visitScheduledFor))
+    .limit(limit)
+    .offset(offset);
+
+    return result;
   }
 }

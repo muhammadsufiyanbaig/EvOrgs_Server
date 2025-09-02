@@ -1,20 +1,34 @@
 import { CustomPackageService } from '../../Service';
 import {
-  GraphQLContext,
   CustomGraphQLError,
   CreateCustomPackageInput,
   QuoteCustomPackageInput,
   RespondToQuoteInput,
-  CustomPackageSearchFilters
+  CustomPackageSearchFilters,
+  AdminCustomPackageFilters
 } from '../../Types';
+import { Context } from '../../../../../../GraphQL/Context';
 
 export const customCateringResolvers = {
   Query: {
+    // Admin fetches all custom packages with filters
+    adminGetAllCustomPackages: async (
+      _: unknown,
+      { filters }: { filters?: AdminCustomPackageFilters },
+      context: Context
+    ) => {
+      if (!context.Admin) {
+        throw CustomGraphQLError.forbidden();
+      }
+
+      const service = new CustomPackageService(context.db);
+      return await service.getAllCustomPackagesForAdmin(filters);
+    },
     // User fetches their own custom packages
     getUserCustomPackages: async (
       _: unknown, 
       __: unknown, 
-      context: GraphQLContext
+      context: Context
     ) => {
       if (!context.user) {
         throw CustomGraphQLError.unauthenticated();
@@ -28,7 +42,7 @@ export const customCateringResolvers = {
     getVendorCustomPackages: async (
       _: unknown, 
       __: unknown, 
-      context: GraphQLContext
+      context: Context
     ) => {
       if (!context.vendor) {
         throw CustomGraphQLError.unauthenticated();
@@ -42,7 +56,7 @@ export const customCateringResolvers = {
     getCustomPackageById: async (
       _: unknown, 
       { packageId }: { packageId: string }, 
-      context: GraphQLContext
+      context: Context
     ) => {
       if (!context.user && !context.vendor) {
         throw CustomGraphQLError.unauthenticated();
@@ -60,7 +74,7 @@ export const customCateringResolvers = {
     searchCustomPackages: async (
       _: unknown, 
       { filters }: { filters?: CustomPackageSearchFilters }, 
-      context: GraphQLContext
+      context: Context
     ) => {
       if (!context.vendor) {
         throw CustomGraphQLError.unauthenticated();
@@ -76,7 +90,7 @@ export const customCateringResolvers = {
     createCustomPackageRequest: async (
       _: unknown, 
       { input }: { input: CreateCustomPackageInput }, 
-      context: GraphQLContext
+      context: Context
     ) => {
       if (!context.user) {
         throw CustomGraphQLError.unauthenticated();
@@ -90,7 +104,7 @@ export const customCateringResolvers = {
     quoteCustomPackage: async (
       _: unknown, 
       { input }: { input: QuoteCustomPackageInput }, 
-      context: GraphQLContext
+      context: Context
     ) => {
       if (!context.vendor) {
         throw CustomGraphQLError.unauthenticated();
@@ -104,7 +118,7 @@ export const customCateringResolvers = {
     respondToCustomPackageQuote: async (
       _: unknown, 
       { input }: { input: RespondToQuoteInput }, 
-      context: GraphQLContext
+      context: Context
     ) => {
       if (!context.user) {
         throw CustomGraphQLError.unauthenticated();

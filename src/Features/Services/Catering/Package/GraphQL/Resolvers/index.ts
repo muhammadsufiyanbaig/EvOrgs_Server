@@ -5,7 +5,9 @@ import {
   CateringPackage,
   CateringPackageInput,
   CateringPackageUpdateInput,
-  SearchCateringPackagesInput
+  SearchCateringPackagesInput,
+  AdminCateringPackageFilters,
+  CateringPackageListResponse
 } from '../../Types';
 
 type SearchResult = {
@@ -59,6 +61,34 @@ export const cateringPackageResolvers = {
     ): Promise<SearchResult> => {
       const service = new CateringPackageService(context.db);
       return await service.searchCateringPackages(input, page, limit);
+    },
+
+    // Admin Query: Get all catering packages with filters and pagination
+    adminGetAllCateringPackages: async (
+      _: unknown,
+      { filters }: { filters?: AdminCateringPackageFilters },
+      context: Context
+    ): Promise<CateringPackageListResponse> => {
+      if (!context.Admin) {
+        throw new Error('Admin authentication required');
+      }
+
+      const service = new CateringPackageService(context.db);
+      return await service.getAllPackagesForAdmin(filters);
+    },
+
+    // Admin Query: Get a specific catering package by ID
+    adminGetCateringPackage: async (
+      _: unknown,
+      { id }: { id: string },
+      context: Context
+    ): Promise<CateringPackage> => {
+      if (!context.Admin) {
+        throw new Error('Admin authentication required');
+      }
+
+      const service = new CateringPackageService(context.db);
+      return await service.getPackageByIdForAdmin(id);
     },
   },
 
@@ -119,6 +149,34 @@ export const cateringPackageResolvers = {
 
       const service = new CateringPackageService(context.db);
       return await service.toggleCateringPackageAvailability(id, context.vendor.id);
+    },
+
+    // Admin Mutation: Update catering package availability
+    adminUpdateCateringPackageAvailability: async (
+      _: unknown,
+      { id, isAvailable }: { id: string; isAvailable: boolean },
+      context: Context
+    ): Promise<CateringPackage> => {
+      if (!context.Admin) {
+        throw new Error('Admin authentication required');
+      }
+
+      const service = new CateringPackageService(context.db);
+      return await service.updatePackageAvailabilityByAdmin(id, isAvailable);
+    },
+
+    // Admin Mutation: Delete catering package
+    adminDeleteCateringPackage: async (
+      _: unknown,
+      { id }: { id: string },
+      context: Context
+    ): Promise<boolean> => {
+      if (!context.Admin) {
+        throw new Error('Admin authentication required');
+      }
+
+      const service = new CateringPackageService(context.db);
+      return await service.deletePackageByAdmin(id);
     },
   },
 };

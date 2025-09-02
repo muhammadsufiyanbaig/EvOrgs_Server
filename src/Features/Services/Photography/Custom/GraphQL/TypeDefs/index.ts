@@ -32,6 +32,33 @@ export const customPhotographyTypeDefs = gql`
     searchTerm: String
   }
 
+  # Admin Filter Input Type
+  input AdminCustomOrderFilters {
+    vendorId: ID
+    userId: ID
+    status: OrderStatus
+    minPrice: Float
+    maxPrice: Float
+    minDuration: Int
+    maxDuration: Int
+    startDate: String
+    endDate: String
+    searchTerm: String
+    page: Int
+    limit: Int
+    sortBy: String
+  }
+
+  # Custom Order List Response Type
+  type CustomOrderListResponse {
+    orders: [CustomOrder!]!
+    total: Int!
+    page: Int!
+    totalPages: Int!
+    hasNextPage: Boolean!
+    hasPreviousPage: Boolean!
+  }
+
   # Custom Order Type
   type CustomOrder {
     id: ID!
@@ -71,6 +98,10 @@ export const customPhotographyTypeDefs = gql`
     getVendorCustomOrders: [CustomOrder!]!
     getCustomOrderById(orderId: ID!): CustomOrder
     searchCustomOrders(input: SearchOrdersInput!): [CustomOrder!]!
+
+    # Admin Queries
+    adminGetAllCustomOrders(filters: AdminCustomOrderFilters): CustomOrderListResponse!
+    adminGetCustomOrder(orderId: ID!): CustomOrder
   }
 
   # Mutation Type
@@ -82,5 +113,9 @@ export const customPhotographyTypeDefs = gql`
     
     # Vendor Mutations
     quoteCustomOrder(input: QuoteOrderInput!): CustomOrder!
+
+    # Admin Mutations
+    adminUpdateOrderStatus(orderId: ID!, status: OrderStatus!): CustomOrder!
+    adminDeleteOrder(orderId: ID!): Boolean!
   }
 `;

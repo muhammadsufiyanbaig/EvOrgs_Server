@@ -5,7 +5,9 @@ import {
   QuoteCustomPackageInput,
   RespondToQuoteInput,
   CustomPackageSearchFilters,
-  CustomGraphQLError
+  CustomPackageSearchResponse,
+  CustomGraphQLError,
+  AdminCustomPackageFilters
 } from '../Types';
 
 export class CustomPackageService {
@@ -23,6 +25,40 @@ export class CustomPackageService {
   // Vendor fetches their custom packages
   async getVendorCustomPackages(vendorId: string) {
     return await this.model.getVendorCustomPackages(vendorId);
+  }
+
+  // Admin gets all custom packages with pagination and filters
+  async getAllCustomPackagesForAdmin(filters: AdminCustomPackageFilters = {}) {
+    const {
+      status,
+      vendorId,
+      userId,
+      minGuestCount,
+      maxGuestCount,
+      startDate,
+      endDate,
+      page = 1,
+      limit = 10
+    } = filters;
+
+    if (filters.startDate) {
+      filters.startDate = new Date(filters.startDate);
+    }
+    if (filters.endDate) {
+      filters.endDate = new Date(filters.endDate);
+    }
+    
+    return await this.model.getAllCustomPackagesForAdmin({
+      status,
+      vendorId,
+      userId,
+      minGuestCount,
+      maxGuestCount,
+      startDate,
+      endDate,
+      page,
+      limit
+    });
   }
 
   // Get a single custom package by ID and verify ownership
@@ -45,7 +81,76 @@ export class CustomPackageService {
   }
 
   // Search custom packages with various filters
-  async searchCustomPackages(vendorId: string, filters?: CustomPackageSearchFilters) {
+  async searchCustomPackages(vendorId: string, filters?: CustomPackageSearchFilters): Promise<CustomPackageSearchResponse> {
+    // Input validation
+    if (filters?.minGuestCount && filters.minGuestCount < 0) {
+      throw new CustomGraphQLError('Minimum guest count cannot be negative', {
+        code: 'BAD_INPUT',
+        details: 'Minimum guest count must be zero or greater'
+      });
+    }
+
+    if (filters?.maxGuestCount && filters.maxGuestCount < 0) {
+      throw new CustomGraphQLError('Maximum guest count cannot be negative', {
+        code: 'BAD_INPUT',
+        details: 'Maximum guest count must be zero or greater'
+      });
+    }
+
+    if (filters?.minGuestCount && filters?.maxGuestCount && filters.minGuestCount > filters.maxGuestCount) {
+      throw new CustomGraphQLError('Minimum guest count cannot be greater than maximum guest count', {
+        code: 'BAD_INPUT',
+        details: 'Invalid guest count range'
+      });
+    }
+
+    if (filters?.minPrice && filters.minPrice < 0) {
+      throw new CustomGraphQLError('Minimum price cannot be negative', {
+        code: 'BAD_INPUT',
+        details: 'Minimum price must be zero or greater'
+      });
+    }
+
+    if (filters?.maxPrice && filters.maxPrice < 0) {
+      throw new CustomGraphQLError('Maximum price cannot be negative', {
+        code: 'BAD_INPUT',
+        details: 'Maximum price must be zero or greater'
+      });
+    }
+
+    if (filters?.minPrice && filters?.maxPrice && filters.minPrice > filters.maxPrice) {
+      throw new CustomGraphQLError('Minimum price cannot be greater than maximum price', {
+        code: 'BAD_INPUT',
+        details: 'Invalid price range'
+      });
+    }
+
+    if (filters?.startDate && filters?.endDate) {
+      const startDate = new Date(filters.startDate);
+      const endDate = new Date(filters.endDate);
+      
+      if (startDate > endDate) {
+        throw new CustomGraphQLError('Start date cannot be after end date', {
+          code: 'BAD_INPUT',
+          details: 'Invalid date range'
+        });
+      }
+    }
+
+    if (filters?.page && filters.page < 1) {
+      throw new CustomGraphQLError('Page number must be positive', {
+        code: 'BAD_INPUT',
+        details: 'Page number must be 1 or greater'
+      });
+    }
+
+    if (filters?.limit && (filters.limit < 1 || filters.limit > 100)) {
+      throw new CustomGraphQLError('Limit must be between 1 and 100', {
+        code: 'BAD_INPUT',
+        details: 'Limit must be between 1 and 100'
+      });
+    }
+
     return await this.model.searchCustomPackages(vendorId, filters);
   }
 
@@ -82,24 +187,12 @@ export class CustomPackageService {
       });
     }
 
-    // Ensure the package belongs to this vendor and is in 'Requested' status
-    const existingPackage = await this.model.findPackageWithConditions({
-      id: input.packageId,
-      vendorId: vendorId,
-      status: CustomPackageStatus.Requested
-    });
-
-    if (!existingPackage) {
-      throw CustomGraphQLError.notFound('Package not found or not in quotable status');
-    }
-
     return await this.model.updateCustomPackage(input.packageId, {
       price: input.price,
       status: CustomPackageStatus.Quoted
     });
   }
 
-  // User responds to a vendor's quote
   async respondToCustomPackageQuote(userId: string, input: RespondToQuoteInput) {
     // Ensure the package belongs to this user and is in 'Quoted' status
     const existingPackage = await this.model.findPackageWithConditions({

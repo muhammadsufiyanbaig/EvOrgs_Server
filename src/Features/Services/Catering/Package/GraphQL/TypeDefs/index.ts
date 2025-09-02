@@ -62,6 +62,31 @@ export const CateringPackageTypeDefs = gql`
     menuItems: [String]
   }
 
+  input AdminCateringPackageFilters {
+    vendorId: ID
+    packageName: String
+    isAvailable: Boolean
+    minPrice: Float
+    maxPrice: Float
+    minGuests: Int
+    maxGuests: Int
+    serviceArea: [String]
+    amenities: [String]
+    dietaryOptions: [String]
+    page: Int
+    limit: Int
+    sortBy: String
+  }
+
+  type CateringPackageListResponse {
+    packages: [CateringPackage!]!
+    total: Int!
+    page: Int!
+    totalPages: Int!
+    hasNextPage: Boolean!
+    hasPreviousPage: Boolean!
+  }
+
   type Query {
     cateringPackage(id: ID!): CateringPackage
     vendorCateringPackages: [CateringPackage!]!
@@ -70,6 +95,10 @@ export const CateringPackageTypeDefs = gql`
       page: Int = 1, 
       limit: Int = 10
     ): SearchResult!
+    
+    # Admin queries
+    adminGetAllCateringPackages(filters: AdminCateringPackageFilters): CateringPackageListResponse!
+    adminGetCateringPackage(id: ID!): CateringPackage
   }
 
   type Mutation {
@@ -77,5 +106,9 @@ export const CateringPackageTypeDefs = gql`
     updateCateringPackage(id: ID!, input: CateringPackageUpdateInput!): CateringPackage!
     deleteCateringPackage(id: ID!): Boolean!
     toggleCateringPackageAvailability(id: ID!): CateringPackage!
+    
+    # Admin mutations
+    adminUpdateCateringPackageAvailability(id: ID!, isAvailable: Boolean!): CateringPackage!
+    adminDeleteCateringPackage(id: ID!): Boolean!
   }
 `;

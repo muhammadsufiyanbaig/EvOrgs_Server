@@ -5,7 +5,9 @@ import {
   CateringPackage, 
   CateringPackageInput, 
   CateringPackageUpdateInput, 
-  SearchCateringPackagesInput 
+  SearchCateringPackagesInput,
+  AdminCateringPackageFilters,
+  CateringPackageListResponse
 } from '../Types';
 type SearchResult = {
   packages: CateringPackage[];
@@ -168,5 +170,78 @@ export class CateringPackageService {
     };
 
     return await this.model.update(id, updateData);
+  }
+
+  // Admin functionality - Get all catering packages with filters and pagination
+  async getAllPackagesForAdmin(filters: AdminCateringPackageFilters = {}): Promise<CateringPackageListResponse> {
+    // Input validation
+    if (filters.minPrice !== undefined && filters.minPrice < 0) {
+      throw new Error('Minimum price cannot be negative');
+    }
+
+    if (filters.maxPrice !== undefined && filters.maxPrice < 0) {
+      throw new Error('Maximum price cannot be negative');
+    }
+
+    if (filters.minPrice !== undefined && filters.maxPrice !== undefined && filters.minPrice > filters.maxPrice) {
+      throw new Error('Minimum price cannot be greater than maximum price');
+    }
+
+    if (filters.minGuests !== undefined && filters.minGuests < 0) {
+      throw new Error('Minimum guests cannot be negative');
+    }
+
+    if (filters.maxGuests !== undefined && filters.maxGuests < 0) {
+      throw new Error('Maximum guests cannot be negative');
+    }
+
+    if (filters.minGuests !== undefined && filters.maxGuests !== undefined && filters.minGuests > filters.maxGuests) {
+      throw new Error('Minimum guests cannot be greater than maximum guests');
+    }
+
+    if (filters.page !== undefined && filters.page < 1) {
+      throw new Error('Page number must be positive');
+    }
+
+    if (filters.limit !== undefined && (filters.limit < 1 || filters.limit > 100)) {
+      throw new Error('Limit must be between 1 and 100');
+    }
+
+    return await this.model.getAllPackagesForAdmin(filters);
+  }
+
+  // Admin functionality - Get a specific package by ID (no ownership check)
+  async getPackageByIdForAdmin(id: string): Promise<CateringPackage> {
+    const cateringPackage = await this.model.findById(id);
+    
+    if (!cateringPackage) {
+      throw new Error('Catering package not found');
+    }
+
+    return cateringPackage;
+  }
+
+  // Admin functionality - Update package availability
+  async updatePackageAvailabilityByAdmin(id: string, isAvailable: boolean): Promise<CateringPackage> {
+    // Check if package exists
+    const existingPackage = await this.model.findById(id);
+    
+    if (!existingPackage) {
+      throw new Error('Catering package not found');
+    }
+
+    return await this.model.updatePackageAvailabilityByAdmin(id, isAvailable);
+  }
+
+  // Admin functionality - Delete any package
+  async deletePackageByAdmin(id: string): Promise<boolean> {
+    // Check if package exists
+    const existingPackage = await this.model.findById(id);
+    
+    if (!existingPackage) {
+      throw new Error('Catering package not found');
+    }
+
+    return await this.model.deletePackageByAdmin(id);
   }
 }

@@ -1,7 +1,14 @@
 // models/CateringPackageModel.ts
-import { SQL, eq, and, ilike, like, count } from 'drizzle-orm';
+import { SQL, eq, and, ilike, like, count, desc, asc, gte, lte } from 'drizzle-orm';
 import { cateringPackages } from '../../../../../Schema';
-import { CateringPackage, CateringPackageInput, CateringPackageUpdateInput, SearchCateringPackagesInput } from '../Types';
+import { 
+  CateringPackage, 
+  CateringPackageInput, 
+  CateringPackageUpdateInput, 
+  SearchCateringPackagesInput,
+  AdminCateringPackageFilters,
+  CateringPackageListResponse
+} from '../Types';
 import { DrizzleDB } from '../../../../../Config/db';
 
 type SearchResult = {
@@ -198,5 +205,161 @@ export class CateringPackageModel {
     conditions.push(eq(cateringPackages.isAvailable, true));
 
     return conditions;
+  }
+
+  // Admin functionality to get all catering packages with filters and pagination
+  async getAllPackagesForAdmin(filters: AdminCateringPackageFilters = {}): Promise<CateringPackageListResponse> {
+    const {
+      vendorId,
+      packageName,
+      isAvailable,
+      minPrice,
+      maxPrice,
+      minGuests,
+      maxGuests,
+      serviceArea,
+      amenities,
+      dietaryOptions,
+      page = 1,
+      limit = 10,
+      sortBy = 'created_at_desc'
+    } = filters;
+
+    const offset = (page - 1) * limit;
+    
+    // Build conditions array
+    const conditions: SQL[] = [];
+    
+    if (vendorId) {
+      conditions.push(eq(cateringPackages.vendorId, vendorId));
+    }
+    
+    if (packageName) {
+      conditions.push(ilike(cateringPackages.packageName, `%${packageName}%`));
+    }
+    
+    if (isAvailable !== undefined) {
+      conditions.push(eq(cateringPackages.isAvailable, isAvailable));
+    }
+    
+    if (minPrice !== undefined) {
+      conditions.push(gte(cateringPackages.price, minPrice.toString()));
+    }
+    
+    if (maxPrice !== undefined) {
+      conditions.push(lte(cateringPackages.price, maxPrice.toString()));
+    }
+    
+    if (minGuests !== undefined) {
+      conditions.push(gte(cateringPackages.minGuests, minGuests));
+    }
+    
+    if (maxGuests !== undefined) {
+      conditions.push(lte(cateringPackages.maxGuests, maxGuests));
+    }
+    
+    if (serviceArea && serviceArea.length > 0) {
+      for (const area of serviceArea) {
+        conditions.push(like(cateringPackages.serviceArea, `%${area}%`));
+      }
+    }
+    
+    if (amenities && amenities.length > 0) {
+      for (const amenity of amenities) {
+        conditions.push(like(cateringPackages.amenities, `%${amenity}%`));
+      }
+    }
+    
+    if (dietaryOptions && dietaryOptions.length > 0) {
+      for (const option of dietaryOptions) {
+        conditions.push(like(cateringPackages.dietaryOptions, `%${option}%`));
+      }
+    }
+
+    // Determine sort order
+    let orderBy;
+    switch (sortBy) {
+      case 'name_asc':
+        orderBy = asc(cateringPackages.packageName);
+        break;
+      case 'name_desc':
+        orderBy = desc(cateringPackages.packageName);
+        break;
+      case 'price_asc':
+        orderBy = asc(cateringPackages.price);
+        break;
+      case 'price_desc':
+        orderBy = desc(cateringPackages.price);
+        break;
+      case 'guests_asc':
+        orderBy = asc(cateringPackages.maxGuests);
+        break;
+      case 'guests_desc':
+        orderBy = desc(cateringPackages.maxGuests);
+        break;
+      case 'created_at_asc':
+        orderBy = asc(cateringPackages.createdAt);
+        break;
+      case 'created_at_desc':
+      default:
+        orderBy = desc(cateringPackages.createdAt);
+        break;
+    }
+
+    // Get packages with pagination
+    const packagesPromise = this.db.select()
+      .from(cateringPackages)
+      .where(conditions.length ? and(...conditions) : undefined)
+      .orderBy(orderBy)
+      .limit(limit)
+      .offset(offset);
+
+    // Get total count
+    const totalCountPromise = this.db.select({
+      count: count()
+    })
+    .from(cateringPackages)
+    .where(conditions.length ? and(...conditions) : undefined);
+
+    // Execute both queries in parallel
+    const [dbPackages, [{ count: total }]] = await Promise.all([packagesPromise, totalCountPromise]);
+
+    // Convert database results to interface format
+    const packages = dbPackages.map(pkg => mapToCateringPackage(pkg as DbCateringPackage));
+
+    return {
+      packages,
+      total: Number(total),
+      page,
+      totalPages: Math.ceil(Number(total) / limit),
+      hasNextPage: page < Math.ceil(Number(total) / limit),
+      hasPreviousPage: page > 1
+    };
+  }
+
+  // Admin functionality to update any package availability
+  async updatePackageAvailabilityByAdmin(id: string, isAvailable: boolean): Promise<CateringPackage> {
+    const dataToUpdate = {
+      isAvailable,
+      updatedAt: new Date()
+    };
+
+    const [updatedPackage] = await this.db
+      .update(cateringPackages)
+      .set(dataToUpdate)
+      .where(eq(cateringPackages.id, id))
+      .returning();
+
+    return mapToCateringPackage(updatedPackage as DbCateringPackage);
+  }
+
+  // Admin functionality to delete any package
+  async deletePackageByAdmin(id: string): Promise<boolean> {
+    const result = await this.db
+      .delete(cateringPackages)
+      .where(eq(cateringPackages.id, id))
+      .returning();
+
+    return result.length > 0;
   }
 }

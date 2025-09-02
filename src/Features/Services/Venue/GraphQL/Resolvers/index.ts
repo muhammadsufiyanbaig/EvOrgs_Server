@@ -20,6 +20,15 @@ export const venueResolver = {
       return await venueService.getVenuesByVendorId(context.vendor.id);
     },
 
+    // Get all venues for admin - admin only with full details
+    adminAllVenues: async (_: any, __: any, context: Context) => {
+      if (!context.Admin) {
+        throw new Error('Admin authentication required');
+      }
+
+      const venueService = new VenueService(context.db);
+      return await venueService.getAllVenuesForAdmin();
+    },
     // Search venues with filters
     searchVenues: async (_: any, filters: {
       tags?: string[];

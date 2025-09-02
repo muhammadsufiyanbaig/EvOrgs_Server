@@ -5,6 +5,7 @@ import { userResolvers } from "../../Features/Auth/User/GraphQL/Resolver";
 import { VendorResolvers } from "../../Features/Auth/Vendor/GraphQL/Resolver";
 import { blogResolvers } from "../../Features/Blog/GraphQL/Resolver";
 import { BookingResolvers } from "../../Features/Booking/GraphQl/Resolver";
+import { chatResolvers } from "../../Features/Chats/GraphQL/Resolver";
 import { notificationResolvers } from "../../Features/Notification/GraphQL/Resolver";
 import { posResolvers } from "../../Features/POS/GraphQL/Resolver";
 import { settingsResolvers } from "../../Features/Preferences/GraphQL/Resolver";
@@ -16,12 +17,14 @@ import { customPhotographyResolver } from "../../Features/Services/Photography/C
 import { photographyResolvers } from "../../Features/Services/Photography/Package/GraphQL/Resolvers";
 import { venueResolver } from "../../Features/Services/Venue/GraphQL/Resolvers";
 import { supportResolvers } from "../../Features/Support/GraphQL/Resolver";
+import { voucherResolvers } from "../../Features/Voucher/GraphQL/Resolver";
 import { dateScalar } from "./Scalar";
 
 
 
 export const resolvers = {
   Date: dateScalar,
+  JSON: chatResolvers.JSON,
   Query: {
     ...userResolvers.Query,
     ...VendorResolvers.Query,
@@ -37,10 +40,12 @@ export const resolvers = {
     ...reviewResolvers.Query,
     ...blogResolvers.Query,
     ...adResolvers.Query,
+    ...chatResolvers.Query,
     ...supportResolvers.Query,
     ...settingsResolvers.Query,
     ...notificationResolvers.Query,
     ...analyticsResolvers.Query,
+    ...voucherResolvers.Query,
 
 
   },
@@ -59,10 +64,12 @@ export const resolvers = {
     ...reviewResolvers.Mutation,
     ...blogResolvers.Mutation,
     ...adResolvers.Mutation,
+    ...chatResolvers.Mutation,
     ...supportResolvers.Mutation,
     ...settingsResolvers.Mutation,
     ...notificationResolvers.Mutation,
     ...analyticsResolvers.Mutation,
+    ...voucherResolvers.Mutation,
     
   },
 };

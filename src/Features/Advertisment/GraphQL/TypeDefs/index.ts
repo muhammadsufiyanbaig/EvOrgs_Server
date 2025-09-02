@@ -175,6 +175,14 @@ export const adTypeDefs = gql`
     timeSlots: [TimeSlotInput!]!
   }
 
+  input ApproveAdRequestWithTimeSlotsInput {
+    finalPrice: Float!
+    adminStartDate: String!
+    adminEndDate: String!
+    adminNotes: String
+    timeSlots: [TimeSlotInput!]!
+  }
+
   # NEW: Time slot types
   type TimeSlot {
     id: ID!
@@ -344,6 +352,7 @@ export const adTypeDefs = gql`
     
     # ADMIN MUTATIONS - Approve/manage ads with time slots
     approveAdRequest(id: ID!, input: ApproveAdRequestInput!): ServiceAd!
+    approveAdRequestWithTimeSlots(id: ID!, input: ApproveAdRequestWithTimeSlotsInput!): ServiceAd!
     rejectAdRequest(id: ID!, adminNotes: String): AdRequest!
     reviewAdRequest(id: ID!, status: RequestStatus!, adminNotes: String): AdRequest!
     

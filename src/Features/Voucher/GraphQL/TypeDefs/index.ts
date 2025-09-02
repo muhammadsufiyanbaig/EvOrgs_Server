@@ -159,7 +159,7 @@ export const voucherTypeDefs = gql`
     # ========== ADMIN-ONLY QUERIES ==========
     
     # Get all vouchers across all vendors with advanced filtering
-    adminGetAllVouchers(filters: AdminVoucherFilters, pagination: PaginationInput): VoucherListResponse!
+    adminGetAllVouchers(filters: AdminVoucherFilters, pagination: VoucherPaginationInput): VoucherListResponse!
     
     # Get comprehensive system-wide voucher analytics
     adminGetVoucherAnalytics(dateFrom: String, dateTo: String): AdminVoucherAnalytics!
@@ -239,7 +239,7 @@ export const voucherTypeDefs = gql`
     
     # Emergency operations
     adminEmergencyDisableAllVouchers(reason: String!): Boolean!
-    adminEmergencyEnableAllVouchers(): Boolean!
+    adminEmergencyEnableAllVouchers: Boolean!
   }
 
   type VoucherStatistics {
@@ -498,7 +498,7 @@ export const voucherTypeDefs = gql`
     maxUsageCount: Int
   }
   
-  input PaginationInput {
+  input VoucherPaginationInput {
     page: Int! = 1
     limit: Int! = 10
     sortBy: String = "createdAt"

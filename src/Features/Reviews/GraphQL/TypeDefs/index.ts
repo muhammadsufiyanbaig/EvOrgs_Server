@@ -106,7 +106,7 @@ export const reviewTypeDefs = gql`
     userId: ID
   }
 
-  input PaginationInput {
+  input ReviewPaginationInput {
     page: Int = 1
     limit: Int = 10
     sortBy: ReviewSortBy = createdAt
@@ -115,16 +115,16 @@ export const reviewTypeDefs = gql`
 
   type Query {
     # Get reviews with filters and pagination
-    getReviews(filters: ReviewFilters, pagination: PaginationInput): ReviewConnection!
+    getReviews(filters: ReviewFilters, pagination: ReviewPaginationInput): ReviewConnection!
     
     # Get a single review by ID
     getReview(id: ID!): Review
     
     # Get reviews for a specific vendor
-    getVendorReviews(vendorId: ID!, pagination: PaginationInput): ReviewConnection!
+    getVendorReviews(vendorId: ID!, pagination: ReviewPaginationInput): ReviewConnection!
     
     # Get reviews by a specific user
-    getUserReviews(userId: ID!, pagination: PaginationInput): ReviewConnection!
+    getUserReviews(userId: ID!, pagination: ReviewPaginationInput): ReviewConnection!
     
     # Get review stats for a vendor
     getVendorReviewStats(vendorId: ID!): ReviewStats!
@@ -136,7 +136,7 @@ export const reviewTypeDefs = gql`
     getReviewResponse(reviewId: ID!): ReviewResponse
     
     # Admin: Get all reviews (including unpublished)
-    getAllReviews(filters: ReviewFilters, pagination: PaginationInput): ReviewConnection!
+    getAllReviews(filters: ReviewFilters, pagination: ReviewPaginationInput): ReviewConnection!
   }
 
   type Mutation {
@@ -160,14 +160,8 @@ export const reviewTypeDefs = gql`
   }
 `;
 
-// Additional type definitions for User and Vendor (if not already defined)
+// Additional type definitions for Vendor (if not already defined)
 export const additionalTypeDefs = gql`
-  type User {
-    id: ID!
-    email: String!
-    firstName: String
-    lastName: String
-  }
 
   type Vendor {
     id: ID!

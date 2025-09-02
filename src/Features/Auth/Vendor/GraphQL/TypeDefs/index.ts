@@ -117,28 +117,11 @@ export const VendorTypeDefs = gql`
     message: String
   }
 
-  # Import types from User schema for vendor management
-  type User {
-    id: ID!
-    firstName: String!
-    lastName: String!
-    email: String!
-    phone: String
-    address: String
-    fcmToken: [String]
-    profileImage: String
-    dateOfBirth: Date
-    gender: String!
-    createdAt: Date!
-    isVerified: Boolean!
-  }
-
-  type UserListResponse {
+    type UserListResponse {
     users: [User!]!
     total: Int!
     page: Int!
     limit: Int!
-    totalPages: Int!
   }
 
   type VendorListResponse {
@@ -167,6 +150,7 @@ export const VendorTypeDefs = gql`
     vendorProfile: Vendor
     vendor(id: ID!): Vendor
     pendingVendors: [Vendor]
+    approvedVendors: [Vendor]
     # Vendor Management Queries
     vendorListAllVendors(input: ListVendorsInput): VendorListResponse!
     vendorListAllUsers(input: ListUsersInput): UserListResponse!

@@ -70,7 +70,7 @@ export const chatTypeDefs = gql`
     vendorId: ID
   }
 
-  input PaginationInput {
+  input ChatPaginationInput {
     limit: Int = 20
     offset: Int = 0
   }
@@ -211,9 +211,9 @@ export const chatTypeDefs = gql`
     getVendorAdInquiries: [AdInquiry!]!
 
     # Admin-specific queries (admin access required)
-    getAllChats(filter: ChatFilterInput, pagination: PaginationInput): [Chat!]!
-    getAllServiceInquiries(filter: ServiceInquiryFilterInput, pagination: PaginationInput): [ServiceInquiry!]!
-    getAllAdInquiries(filter: AdInquiryFilterInput, pagination: PaginationInput): [AdInquiry!]!
+    getAllChats(filter: ChatFilterInput, pagination: ChatPaginationInput): [Chat!]!
+    getAllServiceInquiries(filter: ServiceInquiryFilterInput, pagination: ChatPaginationInput): [ServiceInquiry!]!
+    getAllAdInquiries(filter: AdInquiryFilterInput, pagination: ChatPaginationInput): [AdInquiry!]!
     
     # Admin analytics and reporting
     getChatStatistics(dateFrom: String, dateTo: String): ChatStatistics!

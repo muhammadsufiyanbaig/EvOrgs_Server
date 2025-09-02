@@ -75,13 +75,6 @@ export const customPhotographyTypeDefs = gql`
     vendor: Vendor
   }
 
-  # User Type (abbreviated version)
-  type User {
-    id: ID!
-    name: String
-    email: String!
-  }
-
   # Vendor Type (abbreviated version)
   type Vendor {
     id: ID!

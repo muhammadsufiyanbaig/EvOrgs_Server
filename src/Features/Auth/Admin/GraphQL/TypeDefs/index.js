@@ -103,22 +103,6 @@ exports.AdminTypeDefs = (0, graphql_tag_1.gql) `
     search: String
   }
 
-  # Import User type from User schema
-  type User {
-    id: ID!
-    firstName: String!
-    lastName: String!
-    email: String!
-    phone: String
-    address: String
-    fcmToken: [String]
-    profileImage: String
-    dateOfBirth: String
-    gender: String!
-    createdAt: String!
-    isVerified: Boolean!
-  }
-
   # Vendor Management Types for Admin
   type VendorListResponse {
     vendors: [Vendor!]!
@@ -140,41 +124,6 @@ exports.AdminTypeDefs = (0, graphql_tag_1.gql) `
     vendorId: ID!
     status: VendorStatus!
     message: String
-  }
-
-  # Import Vendor type from Vendor schema
-  type Vendor {
-    id: ID!
-    vendorName: String!
-    vendorEmail: String!
-    vendorPhone: String
-    fcmToken: [String]
-    vendorAddress: String
-    vendorProfileDescription: String
-    vendorWebsite: String
-    vendorSocialLinks: [String]
-    profileImage: String
-    bannerImage: String
-    vendorType: VendorType!
-    vendorStatus: VendorStatus!
-    vendorTypeId: ID
-    rating: Float
-    reviewCount: Int
-    createdAt: String!
-    updatedAt: String!
-  }
-
-  enum VendorType {
-    FarmHouse
-    Venue
-    Catering
-    Photography
-  }
-
-  enum VendorStatus {
-    Pending
-    Approved
-    Rejected
   }
 
   extend type Query {

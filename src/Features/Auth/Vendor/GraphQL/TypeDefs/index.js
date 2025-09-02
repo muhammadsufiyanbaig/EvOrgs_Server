@@ -119,22 +119,6 @@ exports.VendorTypeDefs = (0, graphql_tag_1.gql) `
     message: String
   }
 
-  # Import types from User schema for vendor management
-  type User {
-    id: ID!
-    firstName: String!
-    lastName: String!
-    email: String!
-    phone: String
-    address: String
-    fcmToken: [String]
-    profileImage: String
-    dateOfBirth: Date
-    gender: String!
-    createdAt: Date!
-    isVerified: Boolean!
-  }
-
   type UserListResponse {
     users: [User!]!
     total: Int!
@@ -169,6 +153,7 @@ exports.VendorTypeDefs = (0, graphql_tag_1.gql) `
     vendorProfile: Vendor
     vendor(id: ID!): Vendor
     pendingVendors: [Vendor]
+    approvedVendors: [Vendor]
     # Vendor Management Queries
     vendorListAllVendors(input: ListVendorsInput): VendorListResponse!
     vendorListAllUsers(input: ListUsersInput): UserListResponse!

@@ -23,12 +23,6 @@ export const blogTypeDefs = `
 
   union Author = User | Vendor | Admin
 
-  type User {
-    id: ID!
-    name: String!
-    email: String!
-  }
-
   type Vendor {
     id: ID!
     name: String!
@@ -98,7 +92,7 @@ export const blogTypeDefs = `
     authorId: ID
   }
 
-  input PaginationInput {
+  input BlogPaginationInput {
     page: Int = 1
     limit: Int = 10
   }
@@ -114,13 +108,13 @@ export const blogTypeDefs = `
 
   type Query {
     # Get all blogs with filters and pagination
-    getBlogs(filters: BlogFilters, pagination: PaginationInput): BlogConnection!
+    getBlogs(filters: BlogFilters, pagination: BlogPaginationInput): BlogConnection!
     
     # Get single blog by ID or slug
     getBlog(id: ID, slug: String): Blog
     
     # Get blogs by current authenticated user
-    getMyBlogs(pagination: PaginationInput): BlogConnection!
+    getMyBlogs(pagination: BlogPaginationInput): BlogConnection!
     
     # Get popular blogs (most viewed)
     getPopularBlogs(limit: Int = 10): [Blog!]!
@@ -129,7 +123,7 @@ export const blogTypeDefs = `
     getRecentBlogs(limit: Int = 10): [Blog!]!
     
     # Search blogs
-    searchBlogs(query: String!, pagination: PaginationInput): BlogConnection!
+    searchBlogs(query: String!, pagination: BlogPaginationInput): BlogConnection!
   }
 
   type Mutation {

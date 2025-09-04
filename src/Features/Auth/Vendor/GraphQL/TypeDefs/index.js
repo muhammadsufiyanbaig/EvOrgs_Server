@@ -119,12 +119,11 @@ exports.VendorTypeDefs = (0, graphql_tag_1.gql) `
     message: String
   }
 
-  type UserListResponse {
+    type UserListResponse {
     users: [User!]!
     total: Int!
     page: Int!
     limit: Int!
-    totalPages: Int!
   }
 
   type VendorListResponse {

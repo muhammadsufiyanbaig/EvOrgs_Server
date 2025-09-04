@@ -89,8 +89,8 @@ export const createEmailTransporter = () => {
  * Default email options
  */
 export const getDefaultEmailOptions = () => ({
-  from: process.env.EMAIL_FROM || process.env.EMAIL_USER || 'noreply@evorgs.com',
-  replyTo: process.env.EMAIL_REPLY_TO || process.env.EMAIL_USER || 'support@evorgs.com',
+  from: process.env.EMAIL_USER,
+  replyTo: process.env.EMAIL_USER ,
 });
 
 /**

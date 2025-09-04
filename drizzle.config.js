@@ -8,6 +8,6 @@ exports.default = (0, drizzle_kit_1.defineConfig)({
     out: "./migrations",
     dialect: "postgresql",
     dbCredentials: {
-        url: process.env.DATABASE_URL,
+        url: process.env.DATABASE_URL || "postgresql://neondb_owner:Lkyz7Sbu0tCj@ep-summer-snowflake-a1epoigq-pooler.ap-southeast-1.aws.neon.tech/EvOrgsDevelopment?sslmode=require",
     },
 });

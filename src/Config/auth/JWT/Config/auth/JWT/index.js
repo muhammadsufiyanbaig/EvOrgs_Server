@@ -12,19 +12,19 @@ const JWT_EXPIRES_IN = '7d';
 function generateToken(user) {
     // Determine the type based on which properties exist
     let type = 'user';
-    
     if ('vendorEmail' in user) {
         type = 'vendor';
-    } else if ('role' in user && user.role === 'super_admin') {
+    }
+    else if ('role' in user && user.role === 'super_admin') {
         type = 'admin';
-    } else if ('email' in user && !('vendorEmail' in user)) {
+    }
+    else if ('email' in user && !('vendorEmail' in user)) {
         type = 'user';
     }
-    
     const payload = {
         userId: user.id,
         email: 'vendorEmail' in user ? user.vendorEmail : user.email,
-        type // Include the type in the payload
+        type, // Include the type in the payload
     };
     return jsonwebtoken_1.default.sign(payload, JWT_SECRET, { expiresIn: JWT_EXPIRES_IN });
 }

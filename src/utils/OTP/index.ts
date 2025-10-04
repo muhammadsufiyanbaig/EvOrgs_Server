@@ -147,7 +147,7 @@ public static async sendOtpEmail(
     
     // Prepare email options without logo
     const mailOptions: any = {
-      from: process.env.EMAIL_FROM || '"EvOrgs" <send.sufiyan@gmail.com>',
+      from: process.env.EMAIL_USER,
       to: email,
       subject,
       text,

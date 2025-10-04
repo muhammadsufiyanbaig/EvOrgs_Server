@@ -98,7 +98,16 @@ export const cateringPackageResolvers = {
       { input }: { input: CateringPackageInput },
       context: Context
     ): Promise<CateringPackage> => {
+      // Debug logging
+      console.log('🔍 CREATE CATERING PACKAGE - Debug Info:');
+      console.log('  - Has context.vendor:', !!context.vendor);
+      console.log('  - Has context.user:', !!context.user);
+      console.log('  - Has context.Admin:', !!context.Admin);
+      console.log('  - Vendor ID:', context.vendor?.id);
+      console.log('  - Input:', JSON.stringify(input, null, 2));
+      
       if (!context.vendor) {
+        console.error('❌ Authentication Failed: No vendor in context');
         throw new Error('Authentication required');
       }
 

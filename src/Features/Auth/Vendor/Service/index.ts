@@ -142,7 +142,8 @@ export class VendorService {
       );
     }
 
-    const token = generateToken({ id: vendor.id, email: vendor.vendorEmail } as any);
+    // ✅ FIX: Pass the full vendor object so generateToken can detect vendorEmail property
+    const token = generateToken(vendor as any);
 
     return {
       token,
@@ -199,7 +200,8 @@ export class VendorService {
       );
     }
 
-    const token = generateToken({ id: vendor.id, email: vendor.vendorEmail } as any);
+    // ✅ FIX: Pass the full vendor object so generateToken can detect vendorEmail property
+    const token = generateToken(vendor as any);
 
     return {
       token,

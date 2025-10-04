@@ -10,6 +10,7 @@ import {
   CateringPackageListResponse
 } from '../Types';
 import { DrizzleDB } from '../../../../../Config/db';
+import { randomUUID } from 'crypto';
 
 type SearchResult = {
   packages: CateringPackage[];
@@ -117,8 +118,12 @@ export class CateringPackageModel {
     // Handle the imageUrl conversion if needed
     const imageUrl = packageData.imageUrl ? [packageData.imageUrl] : null;
     
+    // ✅ FIX: Generate UUID for the id field
+    const id = randomUUID();
+    
     // Convert price from number to string as required by CateringPackage interface
     const dataToInsert = {
+      id, // Add the generated UUID
       ...packageData,
       imageUrl, // Convert string to string[] for DB
       price: packageData.price.toString(),

@@ -65,11 +65,14 @@ export class PhotographyService {
       });
     }
     
+    // ✅ FIX: Generate UUID for the id field (database doesn't auto-generate)
+    const { randomUUID } = require('crypto');
+    
     // Create package with default values
     const newPackage = {
       ...input,
       vendorId: vendor.id,
-      id: undefined, // Let the database generate the ID
+      id: randomUUID(), // Generate UUID instead of undefined
       isAvailable: input.isAvailable ?? true, // Set default if not provided
       createdAt: new Date(),
       updatedAt: new Date(),

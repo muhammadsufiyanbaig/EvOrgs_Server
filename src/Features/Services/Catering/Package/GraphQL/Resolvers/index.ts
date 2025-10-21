@@ -63,16 +63,12 @@ export const cateringPackageResolvers = {
       return await service.searchCateringPackages(input, page, limit);
     },
 
-    // Admin Query: Get all catering packages with filters and pagination
+    // Public Query: Get all catering packages with filters and pagination (No authentication required)
     adminGetAllCateringPackages: async (
       _: unknown,
       { filters }: { filters?: AdminCateringPackageFilters },
       context: Context
     ): Promise<CateringPackageListResponse> => {
-      if (!context.Admin) {
-        throw new Error('Admin authentication required');
-      }
-
       const service = new CateringPackageService(context.db);
       return await service.getAllPackagesForAdmin(filters);
     },

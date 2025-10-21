@@ -32,12 +32,12 @@ export const photographyResolvers = {
 
     // ================ ADMIN QUERIES ================
 
-    // Admin: Get all packages with filtering and pagination
+    // Public: Get all packages with filtering and pagination (No authentication required)
     adminGetAllPackages: async (_: any, { filters }: { filters?: AdminPackageFilters }, context: Context) => {
-      const { db, Admin } = context;
+      const { db } = context;
       const photographyService = new PhotographyService(db);
       
-      return photographyService.getAllPackagesForAdmin(filters || {}, Admin);
+      return photographyService.getAllPackagesForAdmin(filters || {}, undefined);
     },
 
     // Admin: Get package by ID with vendor details
